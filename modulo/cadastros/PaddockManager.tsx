@@ -57,17 +57,17 @@ const PaddockManager: React.FC<PaddockManagerProps> = ({ initialData, onRefresh,
 
   return (
     <div className="max-w-5xl mx-auto space-y-6 animate-in fade-in duration-500">
-      <div className="flex justify-between items-center px-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 px-4">
         <div>
           <h2 className="text-2xl font-black uppercase tracking-tight text-slate-800">Mapa de Piquetes</h2>
           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Gerenciamento de áreas e lotação instantânea</p>
         </div>
-        <button onClick={() => setIsFormOpen(true)} className="px-8 py-3 bg-emerald-600 text-white rounded-2xl font-black text-[11px] uppercase shadow-lg shadow-emerald-900/10 active:scale-95 transition-all">Novo Piquete</button>
+        <button onClick={() => setIsFormOpen(true)} className="w-full sm:w-auto px-8 py-3 bg-emerald-600 text-white rounded-2xl font-black text-[11px] uppercase shadow-lg shadow-emerald-900/10 active:scale-95 transition-all">Novo Piquete</button>
       </div>
 
       {isFormOpen && (
         <div className="fixed inset-0 z-[600] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm">
-          <div className="bg-white p-10 rounded-[40px] border border-slate-200 shadow-2xl animate-in zoom-in-95 w-full max-w-2xl">
+          <div className="bg-white p-6 sm:p-10 rounded-[32px] sm:rounded-[40px] border border-slate-200 shadow-2xl animate-in zoom-in-95 w-full max-w-2xl overflow-y-auto max-h-[90vh]">
             <div className="mb-8">
               <h3 className="text-xl font-black text-slate-800 uppercase">{editingPaddock ? 'Editar Área' : 'Nova Área de Pastagem'}</h3>
               <p className="text-[10px] font-bold text-slate-400 uppercase mt-1">Configure os limites técnicos do piquete</p>
@@ -91,7 +91,7 @@ const PaddockManager: React.FC<PaddockManagerProps> = ({ initialData, onRefresh,
                   <input className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl font-black uppercase text-sm outline-none focus:border-emerald-500" value={formData.grama} onChange={e => setFormData({...formData, grama: e.target.value})} placeholder="EX: TIFTON 85, BRASILIENSE..." />
                 </div>
               </div>
-              <div className="flex justify-end gap-3 mt-8 pt-6 border-t border-slate-50">
+              <div className="flex flex-col sm:flex-row justify-end gap-3 mt-8 pt-6 border-t border-slate-50">
                  <button type="button" onClick={() => { setIsFormOpen(false); setEditingPaddock(null); }} className="px-8 py-4 text-slate-400 font-black uppercase text-[11px]">Cancelar</button>
                  <button type="submit" className="px-12 py-4 bg-slate-900 text-white rounded-2xl font-black uppercase text-[11px] shadow-xl active:scale-95 transition-all">Confirmar Registro</button>
               </div>
@@ -101,14 +101,15 @@ const PaddockManager: React.FC<PaddockManagerProps> = ({ initialData, onRefresh,
       )}
 
       <div className="bg-white rounded-[40px] border border-slate-200 shadow-sm overflow-hidden">
-        <table className="w-full text-left">
-          <thead className="bg-slate-50 text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] border-b">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left min-w-[800px]">
+            <thead className="bg-slate-50 text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] border-b">
             <tr>
-              <th className="p-6">Identificação</th>
-              <th className="p-6">Capacidade</th>
-              <th className="p-6">Ocupação Atual</th>
-              <th className="p-6">Pastagem</th>
-              <th className="p-6 text-right">Ações</th>
+              <th className="px-4 py-6 sm:p-6">Identificação</th>
+              <th className="px-4 py-6 sm:p-6">Capacidade</th>
+              <th className="px-4 py-6 sm:p-6">Ocupação Atual</th>
+              <th className="px-4 py-6 sm:p-6">Pastagem</th>
+              <th className="px-4 py-6 sm:p-6 text-right">Ações</th>
             </tr>
           </thead>
           <tbody className="divide-y text-xs">
@@ -122,14 +123,14 @@ const PaddockManager: React.FC<PaddockManagerProps> = ({ initialData, onRefresh,
                   onClick={() => setViewingSheepList(p)}
                   className="hover:bg-slate-50/80 transition-all group cursor-pointer"
                 >
-                  <td className="p-6">
+                  <td className="px-4 py-6 sm:p-6">
                     <p className="font-black uppercase text-slate-800 text-sm group-hover:text-indigo-600 transition-colors">{p.piquete}</p>
                     <p className="text-[9px] font-bold text-slate-400">{p.tamanho || '0'} ha de área total</p>
                   </td>
-                  <td className="p-6 font-black text-slate-600">
+                  <td className="px-4 py-6 sm:p-6 font-black text-slate-600">
                     {p.lotacao} <span className="text-[9px] opacity-40 uppercase ml-1">Cab.</span>
                   </td>
-                  <td className="p-6">
+                  <td className="px-4 py-6 sm:p-6">
                     <div className="flex flex-col gap-1.5 min-w-[120px]">
                       <div className="flex justify-between items-center text-[9px] font-black uppercase">
                         <span className={occupancyRate > 90 ? 'text-rose-600' : 'text-emerald-600'}>{occupants.length} Ocupantes</span>
@@ -143,11 +144,11 @@ const PaddockManager: React.FC<PaddockManagerProps> = ({ initialData, onRefresh,
                       </div>
                     </div>
                   </td>
-                  <td className="p-6">
+                  <td className="px-4 py-6 sm:p-6">
                     <span className="px-3 py-1 bg-slate-100 rounded-full font-black text-[9px] uppercase text-slate-500">{p.grama || 'NÃO DEF.'}</span>
                   </td>
-                  <td className="p-6 text-right">
-                    <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-all">
+                  <td className="px-4 py-6 sm:p-6 text-right">
+                    <div className="flex justify-end gap-2 md:opacity-0 group-hover:opacity-100 transition-all">
                       <button onClick={(e) => handleEdit(p, e)} className="p-2.5 bg-white border border-slate-200 rounded-xl hover:text-indigo-600 shadow-sm transition-all" title="Editar">✏️</button>
                       <button onClick={(e) => handleDelete(p.id, e)} className="p-2.5 bg-rose-50 text-rose-500 rounded-xl hover:bg-rose-500 hover:text-white transition-all" title="Excluir">🗑️</button>
                     </div>
@@ -161,6 +162,7 @@ const PaddockManager: React.FC<PaddockManagerProps> = ({ initialData, onRefresh,
           </tbody>
         </table>
       </div>
+    </div>
 
       {/* MODAL DE LISTAGEM DE ANIMAIS NO PIQUETE */}
       {viewingSheepList && (

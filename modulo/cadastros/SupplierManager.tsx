@@ -41,9 +41,9 @@ const SupplierManager: React.FC<SupplierManagerProps> = ({ initialData, onRefres
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
-      <div className="flex justify-between items-center px-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 px-4">
         <h2 className="text-xl font-black uppercase tracking-tight">🚚 Fornecedores</h2>
-        <button onClick={() => setIsFormOpen(true)} className="px-6 py-2 bg-emerald-600 text-white rounded-xl font-black text-[10px] uppercase shadow-lg">Novo Fornecedor</button>
+        <button onClick={() => setIsFormOpen(true)} className="w-full sm:w-auto px-6 py-2 bg-emerald-600 text-white rounded-xl font-black text-[10px] uppercase shadow-lg">Novo Fornecedor</button>
       </div>
 
       {isFormOpen && (
@@ -76,37 +76,39 @@ const SupplierManager: React.FC<SupplierManagerProps> = ({ initialData, onRefres
       )}
 
       <div className="bg-white rounded-[32px] border border-slate-200 shadow-sm overflow-hidden">
-        <table className="w-full text-left">
-          <thead className="bg-slate-50 text-[9px] font-black text-slate-400 uppercase">
-            <tr><th className="p-5">Fornecedor</th><th className="p-5">O que fornece</th><th className="p-5">WhatsApp</th><th className="p-5 text-right">Ações</th></tr>
-          </thead>
-          <tbody className="divide-y text-xs">
-            {initialData.map(s => (
-              <tr key={s.id} className="hover:bg-slate-50 group">
-                <td className="p-5">
-                  <p className="font-black uppercase text-slate-800">{s.nome}</p>
-                  <p className="text-[9px] font-bold text-slate-400">{s.contato || 'SEM RESPONSÁVEL'}</p>
-                </td>
-                <td className="p-5 font-bold text-slate-600 uppercase italic">{s.fornece || '-'}</td>
-                <td className="p-5 text-emerald-600 font-black tracking-tight">{s.celular || '-'}</td>
-                <td className="p-5 text-right">
-                  <div className="flex justify-end gap-2">
-                    <button onClick={() => handleEdit(s)} className="p-2 bg-slate-50 rounded-lg">✏️</button>
-                    <button onClick={async () => { 
-                      // Fix: Added check for linked sheep before deletion to prevent database errors and ensure data integrity
-                      const isUsed = sheep.some(anim => anim.origem === s.nome);
-                      if (isUsed) {
-                        alert(`BLOQUEIO: O fornecedor "${s.nome}" é a origem de animais no rebanho.`);
-                        return;
-                      }
-                      if(confirm("Excluir?")) { await entityService.delete('fornecedores', s.id); onRefresh(); } 
-                    }} className="p-2 bg-rose-50 text-rose-400 rounded-lg">🗑️</button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left min-w-[600px]">
+            <thead className="bg-slate-50 text-[9px] font-black text-slate-400 uppercase">
+              <tr><th className="p-5">Fornecedor</th><th className="p-5">O que fornece</th><th className="p-5">WhatsApp</th><th className="p-5 text-right">Ações</th></tr>
+            </thead>
+            <tbody className="divide-y text-xs">
+              {initialData.map(s => (
+                <tr key={s.id} className="hover:bg-slate-50 group">
+                  <td className="p-5">
+                    <p className="font-black uppercase text-slate-800">{s.nome}</p>
+                    <p className="text-[9px] font-bold text-slate-400">{s.contato || 'SEM RESPONSÁVEL'}</p>
+                  </td>
+                  <td className="p-5 font-bold text-slate-600 uppercase italic">{s.fornece || '-'}</td>
+                  <td className="p-5 text-emerald-600 font-black tracking-tight">{s.celular || '-'}</td>
+                  <td className="p-5 text-right">
+                    <div className="flex justify-end gap-2">
+                      <button onClick={() => handleEdit(s)} className="p-2 bg-slate-50 rounded-lg">✏️</button>
+                      <button onClick={async () => { 
+                        // Fix: Added check for linked sheep before deletion to prevent database errors and ensure data integrity
+                        const isUsed = sheep.some(anim => anim.origem === s.nome);
+                        if (isUsed) {
+                          alert(`BLOQUEIO: O fornecedor "${s.nome}" é a origem de animais no rebanho.`);
+                          return;
+                        }
+                        if(confirm("Excluir?")) { await entityService.delete('fornecedores', s.id); onRefresh(); } 
+                      }} className="p-2 bg-rose-50 text-rose-400 rounded-lg">🗑️</button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
