@@ -70,11 +70,11 @@ const App: React.FC = () => {
 
   useEffect(() => {
     if (isSupabaseConfigured) {
-      supabase.auth.getSession().then(({ data: { session } }) => {
+      supabase.auth.getSession().then(({ data: { session } }: { data: { session: any } }) => {
         setSession(session);
         setAuthLoading(false);
       });
-      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: any, session: any) => {
         setSession(session);
       });
       return () => subscription.unsubscribe();

@@ -27,7 +27,7 @@ export const breedingPlanService = {
         
         if (error) throw error;
         
-        return (data || []).map(d => ({
+        return (data || []).map((d: any) => ({
           id: d.id,
           nome: d.nome,
           reprodutorId: d.reprodutor_id,

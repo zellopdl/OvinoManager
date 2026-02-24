@@ -9,7 +9,7 @@ export const reproService = {
     if (isSupabaseConfigured) {
       const { data, error } = await supabase.from('reproducao').select('*').order('data_cobertura', { ascending: false });
       if (error) throw error;
-      return (data || []).map(d => ({
+      return (data || []).map((d: any) => ({
         id: d.id,
         matrizId: d.matriz_id,
         reprodutorId: d.reprodutor_id,

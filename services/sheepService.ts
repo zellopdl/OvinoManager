@@ -73,7 +73,7 @@ export const sheepService = {
 
         if (error) throw error;
         
-        return (data || []).map(item => ({
+        return (data || []).map((item: any) => ({
           id: item.id,
           brinco: item.brinco,
           nome: item.nome,

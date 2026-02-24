@@ -18,7 +18,7 @@ const KnowledgeAssistant: React.FC = () => {
     if (!q.trim()) return;
     setLoading(true);
     const res = await askKnowledgeAssistant(q);
-    setAns(res);
+    setAns(res || '');
     setLoading(false);
   };
 

@@ -56,7 +56,7 @@ export const sheepService = {
         .select(`*, historico_peso (id, peso, data)`)
         .order('created_at', { ascending: false });
       if (error) throw error;
-      return (data || []).map(item => ({
+      return (data || []).map((item: any) => ({
         id: item.id,
         brinco: item.brinco,
         nome: item.nome,

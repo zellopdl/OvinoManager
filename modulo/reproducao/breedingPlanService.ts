@@ -23,18 +23,18 @@ export const breedingPlanService = {
     
     if (errOvelhas) {
        console.warn("Tabela lote_ovelhas não encontrada. Certifique-se de rodar o SQL de migração.");
-       return (lotes || []).map(l => ({ ...l, ovelhas: [] }));
+       return (lotes || []).map((l: any) => ({ ...l, ovelhas: [] }));
     }
 
-    return (lotes || []).map(l => ({
+    return (lotes || []).map((l: any) => ({
       id: l.id,
       nome: l.nome,
       reprodutorId: l.reprodutor_id,
       dataInicioMonta: l.data_inicio_monta,
       status: l.status,
       ovelhas: (ovelhasLote || [])
-        .filter(o => o.lote_id === l.id)
-        .map(o => ({
+        .filter((o: any) => o.lote_id === l.id)
+        .map((o: any) => ({
           id: o.id,
           loteId: o.lote_id,
           eweId: o.ovelha_id,
@@ -69,7 +69,7 @@ export const breedingPlanService = {
     
     if (ovelhas && ovelhas.length > 0) {
       const vaziaId = await breedingPlanService.getOrCreateVaziaGroup();
-      await Promise.all(ovelhas.map(o => 
+      await Promise.all(ovelhas.map((o: any) => 
         sheepService.update(o.ovelha_id, { grupoId: vaziaId || undefined, prenha: false })
       ));
     }
@@ -93,7 +93,7 @@ export const breedingPlanService = {
       emMontaGroup = created?.id;
     }
     
-    await sheepService.update(eweId, { grupoId: emMontaGroup || null });
+    await sheepService.update(eweId, { grupoId: emMontaGroup || undefined });
   },
 
   async removeEwe(loteOvelhaId: string, eweId: string, loteId: string) {
@@ -107,7 +107,7 @@ export const breedingPlanService = {
 
     // 2. Retorna o animal para o grupo 'VAZIAS'
     const vaziaId = await breedingPlanService.getOrCreateVaziaGroup();
-    await sheepService.update(eweId, { grupoId: vaziaId || null, prenha: false });
+    await sheepService.update(eweId, { grupoId: vaziaId || undefined, prenha: false });
 
     // 3. Limpa qualquer registro de reprodução confirmado que tenha sido gerado por este lote
     try {

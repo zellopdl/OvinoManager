@@ -56,7 +56,7 @@ export const manejoService = {
 
         if (error) throw error;
 
-        return (data || []).map(m => ({
+        return (data || []).map((m: any) => ({
           id: m.id,
           titulo: m.titulo,
           tipo: m.tipo as TipoManejo,

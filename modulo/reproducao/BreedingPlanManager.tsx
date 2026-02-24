@@ -161,7 +161,7 @@ const BreedingPlanManager: React.FC<BreedingPlanManagerProps> = ({ sheep, groups
                               </div>
                               <div className="flex gap-2">
                                 {o.finalizado && !isRowUnlocked && <button onClick={() => setEweToUnlock(o.eweId)} className="p-2 bg-rose-50 text-rose-500 rounded-lg text-sm shadow-sm">🔒</button>}
-                                <button onClick={() => breedingPlanService.removeEwe(o.id, o.eweId, selectedPlanId)} className="md:hidden w-8 h-8 flex items-center justify-center bg-rose-50 text-rose-400 rounded-lg">✕</button>
+                                <button onClick={() => breedingPlanService.removeEwe(o.id, o.eweId, selectedPlanId || '')} className="md:hidden w-8 h-8 flex items-center justify-center bg-rose-50 text-rose-400 rounded-lg">✕</button>
                               </div>
                            </div>
 
@@ -182,7 +182,7 @@ const BreedingPlanManager: React.FC<BreedingPlanManagerProps> = ({ sheep, groups
                                 );
                               })}
                            </div>
-                           <button onClick={() => breedingPlanService.removeEwe(o.id, o.eweId, selectedPlanId)} className="hidden md:flex w-10 h-10 items-center justify-center bg-rose-50 text-rose-300 rounded-2xl hover:text-rose-500 transition-all">🗑️</button>
+                           <button onClick={() => breedingPlanService.removeEwe(o.id, o.eweId, selectedPlanId || '')} className="hidden md:flex w-10 h-10 items-center justify-center bg-rose-50 text-rose-300 rounded-2xl hover:text-rose-500 transition-all">🗑️</button>
                         </div>
                       );
                     })}
