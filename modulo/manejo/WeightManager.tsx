@@ -29,7 +29,10 @@ const WeightManager: React.FC<WeightManagerProps> = ({ sheep, groups, onRefresh 
       <div className="bg-white p-6 rounded-3xl border shadow-sm">
         <select className="p-3 bg-slate-50 border rounded-xl font-bold" value={selectedGroup} onChange={e => setSelectedGroup(e.target.value)}>
           <option value="">Selecione o Lote...</option>
-          {groups.map(g => <option key={g.id} value={g.id}>{g.nome}</option>)}
+          {groups.map(g => {
+            const count = sheep.filter(s => s.grupoId === g.id && s.status === 'ativo').length;
+            return <option key={g.id} value={g.id}>{g.nome} - {count} animais</option>;
+          })}
         </select>
       </div>
       {selectedGroup && (

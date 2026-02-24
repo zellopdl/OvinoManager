@@ -25,10 +25,43 @@ const ChartsView: React.FC<ChartsViewProps> = ({ sheep, groups }) => {
   const growthScatterData = useMemo(() => {
     const now = new Date().getTime();
     return sheep.filter(s => s.status === Status.ATIVO).map(s => {
-      const ageInDays = Math.floor((now - new Date(s.nascimento).getTime()) / (1000 * 3600 * 24));
-      return { nome: s.nome, idadeDias: ageInDays, peso: s.peso };
+      const birthDate = new Date(s.nascimento).getTime();
+      const ageInDays = Math.floor((now - birthDate) / (1000 * 3600 * 24));
+      
+      // Cálculo do GMD (Ganho Médio Diário)
+      let gmd = 0;
+      if (s.historicoPeso && s.historicoPeso.length >= 2) {
+        const sortedHistory = [...s.historicoPeso].sort((a, b) => new Date(a.data).getTime() - new Date(b.data).getTime());
+        const first = sortedHistory[0];
+        const last = sortedHistory[sortedHistory.length - 1];
+        const diffDays = (new Date(last.data).getTime() - new Date(first.data).getTime()) / (1000 * 3600 * 24);
+        if (diffDays > 0.5) {
+          gmd = (last.peso - first.peso) / diffDays;
+        } else if (ageInDays > 0) {
+          gmd = (s.peso - 4) / ageInDays;
+        }
+      } else if (ageInDays > 0) {
+        gmd = (s.peso - 4) / ageInDays;
+      }
+
+      return { 
+        nome: s.nome, 
+        idadeDias: ageInDays, 
+        peso: s.peso,
+        gmd: gmd > 0 ? Number((gmd * 1000).toFixed(0)) : 0,
+        ecc: s.ecc,
+        isBreeding: s.prenha || groups.find(g => g.id === s.grupoId)?.nome === 'EM MONTA'
+      };
     }).filter(d => d.idadeDias >= 0 && d.idadeDias < 365);
-  }, [sheep]);
+  }, [sheep, groups]);
+
+  const breedingScatterData = useMemo(() => {
+    return growthScatterData.filter(d => d.isBreeding);
+  }, [growthScatterData]);
+
+  const fatteningScatterData = useMemo(() => {
+    return growthScatterData.filter(d => !d.isBreeding);
+  }, [growthScatterData]);
 
   // Dados Avançados para Distribuição por Grupo (COM DIVISÃO POR SEXO)
   const activeByGroupData = useMemo(() => {
@@ -88,12 +121,15 @@ const ChartsView: React.FC<ChartsViewProps> = ({ sheep, groups }) => {
       <div className="space-y-6">
         <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Evolução e Performance</h3>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <div className="bg-white p-6 md:p-8 rounded-[40px] border shadow-sm flex flex-col h-[400px] md:h-[450px]">
+          <div className="lg:col-span-2 bg-white p-6 md:p-8 rounded-[40px] border shadow-sm flex flex-col h-[400px] md:h-[450px]">
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
                 <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-ping"></span> Curva de Engorda vs Meta
               </h3>
-              <span className="px-3 py-1 bg-rose-50 text-rose-600 rounded-full text-[9px] font-black uppercase border border-rose-100">Alvo: 42kg</span>
+              <div className="flex flex-col items-end gap-1">
+                <span className="px-3 py-1 bg-rose-50 text-rose-600 rounded-full text-[9px] font-black uppercase border border-rose-100">Alvo: 42kg</span>
+                <span className="text-[8px] font-black text-emerald-600 uppercase">Inclui GMD (g/dia)</span>
+              </div>
             </div>
             <div className="flex-1 min-h-0">
               <ResponsiveContainer width="100%" height="100%">
@@ -107,9 +143,22 @@ const ChartsView: React.FC<ChartsViewProps> = ({ sheep, groups }) => {
                       if (active && payload && payload.length) {
                         const data = payload[0].payload;
                         return (
-                          <div className="bg-white p-3 border border-slate-100 shadow-xl rounded-xl">
-                            <p className="text-[10px] font-black uppercase text-slate-800">{data.nome}</p>
-                            <p className="text-[10px] font-bold text-indigo-600">{data.peso}kg • {data.idadeDias} dias</p>
+                          <div className="bg-white p-4 border border-slate-100 shadow-2xl rounded-2xl">
+                            <p className="text-[10px] font-black uppercase text-slate-800 mb-1">{data.nome}</p>
+                            <div className="space-y-1">
+                              <p className="text-[10px] font-bold text-indigo-600 flex justify-between gap-4">
+                                <span>PESO ATUAL:</span>
+                                <span>{data.peso}kg</span>
+                              </p>
+                              <p className="text-[10px] font-bold text-slate-500 flex justify-between gap-4">
+                                <span>IDADE:</span>
+                                <span>{data.idadeDias} dias</span>
+                              </p>
+                              <p className="text-[10px] font-black text-emerald-600 flex justify-between gap-4 border-t border-slate-50 pt-1 mt-1">
+                                <span>GMD MÉDIO:</span>
+                                <span>{data.gmd}g/dia</span>
+                              </p>
+                            </div>
                           </div>
                         );
                       }
@@ -123,29 +172,114 @@ const ChartsView: React.FC<ChartsViewProps> = ({ sheep, groups }) => {
                     strokeDasharray="8 4" 
                     label={{ value: 'META 42KG', position: 'top', fill: '#e11d48', fontSize: 10, fontWeight: '900' }} 
                   />
-                  <Scatter name="Animais" data={growthScatterData} fill="#6366f1" fillOpacity={0.6} />
+                  <Scatter name="Animais" data={fatteningScatterData} fill="#6366f1" fillOpacity={0.6} />
                 </ScatterChart>
               </ResponsiveContainer>
             </div>
           </div>
 
           <div className="bg-white p-6 md:p-8 rounded-[40px] border shadow-sm flex flex-col h-[400px] md:h-[450px]">
-            <h3 className="text-[10px] font-black text-slate-400 uppercase mb-6 tracking-widest">Distribuição Famacha (Anemia)</h3>
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                <span className="w-1.5 h-1.5 bg-pink-500 rounded-full animate-ping"></span> GMD Matrizes (g/dia)
+              </h3>
+              <div className="flex flex-col items-end gap-1">
+                <span className="px-3 py-1 bg-pink-50 text-pink-600 rounded-full text-[9px] font-black uppercase border border-pink-100">Performance</span>
+                <span className="text-[8px] font-black text-emerald-600 uppercase">Ganho Diário</span>
+              </div>
+            </div>
             <div className="flex-1 min-h-0">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={famachaData}>
-                  <defs>
-                    <linearGradient id="colorFam" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.2}/>
-                      <stop offset="95%" stopColor="#f59e0b" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
+                <ScatterChart margin={{ top: 20, right: 30, bottom: 20, left: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                  <XAxis dataKey="grau" axisLine={false} tickLine={false} tick={{fontSize: 9, fontWeight:'bold'}} />
-                  <YAxis axisLine={false} tickLine={false} tick={{fontSize: 9}} />
-                  <Tooltip />
-                  <Area type="monotone" dataKey="total" stroke="#f59e0b" strokeWidth={3} fillOpacity={1} fill="url(#colorFam)" />
-                </AreaChart>
+                  <XAxis type="number" dataKey="idadeDias" name="Idade" unit=" dias" axisLine={false} tickLine={false} tick={{fontSize: 9}} />
+                  <YAxis type="number" dataKey="gmd" name="GMD" unit=" g" axisLine={false} tickLine={false} tick={{fontSize: 9}} />
+                  <Tooltip 
+                    cursor={{ strokeDasharray: '3 3' }}
+                    content={({ active, payload }) => {
+                      if (active && payload && payload.length) {
+                        const data = payload[0].payload;
+                        return (
+                          <div className="bg-white p-4 border border-slate-100 shadow-2xl rounded-2xl">
+                            <p className="text-[10px] font-black uppercase text-slate-800 mb-1">{data.nome}</p>
+                            <div className="space-y-1">
+                              <p className="text-[10px] font-black text-emerald-600 flex justify-between gap-4">
+                                <span>GMD MÉDIO:</span>
+                                <span>{data.gmd}g/dia</span>
+                              </p>
+                              <p className="text-[10px] font-bold text-pink-600 flex justify-between gap-4">
+                                <span>PESO ATUAL:</span>
+                                <span>{data.peso}kg</span>
+                              </p>
+                              <p className="text-[10px] font-bold text-slate-500 flex justify-between gap-4">
+                                <span>IDADE:</span>
+                                <span>{data.idadeDias} dias</span>
+                              </p>
+                              <p className="text-[10px] font-bold text-amber-600 flex justify-between gap-4 border-t border-slate-50 pt-1 mt-1">
+                                <span>ECC:</span>
+                                <span>{data.ecc}</span>
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      }
+                      return null;
+                    }}
+                  />
+                  <Scatter name="Matrizes" data={breedingScatterData} fill="#ec4899" fillOpacity={0.6} />
+                </ScatterChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          <div className="bg-white p-6 md:p-8 rounded-[40px] border shadow-sm flex flex-col h-[400px] md:h-[450px]">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-ping"></span> ECC Matrizes (Escore)
+              </h3>
+              <div className="flex flex-col items-end gap-1">
+                <span className="px-3 py-1 bg-amber-50 text-amber-600 rounded-full text-[9px] font-black uppercase border border-amber-100">Condição</span>
+                <span className="text-[8px] font-black text-slate-400 uppercase">Escore Corporal</span>
+              </div>
+            </div>
+            <div className="flex-1 min-h-0">
+              <ResponsiveContainer width="100%" height="100%">
+                <ScatterChart margin={{ top: 20, right: 30, bottom: 20, left: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                  <XAxis type="number" dataKey="idadeDias" name="Idade" unit=" dias" axisLine={false} tickLine={false} tick={{fontSize: 9}} />
+                  <YAxis type="number" dataKey="ecc" name="ECC" domain={[0, 5]} ticks={[1, 2, 3, 4, 5]} axisLine={false} tickLine={false} tick={{fontSize: 9}} />
+                  <Tooltip 
+                    cursor={{ strokeDasharray: '3 3' }}
+                    content={({ active, payload }) => {
+                      if (active && payload && payload.length) {
+                        const data = payload[0].payload;
+                        return (
+                          <div className="bg-white p-4 border border-slate-100 shadow-2xl rounded-2xl">
+                            <p className="text-[10px] font-black uppercase text-slate-800 mb-1">{data.nome}</p>
+                            <div className="space-y-1">
+                              <p className="text-[10px] font-black text-amber-600 flex justify-between gap-4">
+                                <span>ECC:</span>
+                                <span>{data.ecc}</span>
+                              </p>
+                              <p className="text-[10px] font-bold text-slate-500 flex justify-between gap-4">
+                                <span>IDADE:</span>
+                                <span>{data.idadeDias} dias</span>
+                              </p>
+                              <p className="text-[10px] font-bold text-indigo-600 flex justify-between gap-4 border-t border-slate-50 pt-1 mt-1">
+                                <span>GMD:</span>
+                                <span>{data.gmd}g/dia</span>
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      }
+                      return null;
+                    }}
+                  />
+                  <ReferenceLine y={2.5} stroke="#f59e0b" strokeDasharray="3 3" label={{ value: 'MÍNIMO', position: 'right', fill: '#f59e0b', fontSize: 8 }} />
+                  <ReferenceLine y={3.5} stroke="#10b981" strokeDasharray="3 3" label={{ value: 'IDEAL', position: 'right', fill: '#10b981', fontSize: 8 }} />
+                  <Scatter name="ECC" data={breedingScatterData} fill="#f59e0b" fillOpacity={0.6} />
+                </ScatterChart>
               </ResponsiveContainer>
             </div>
           </div>
@@ -243,7 +377,7 @@ const ChartsView: React.FC<ChartsViewProps> = ({ sheep, groups }) => {
       </div>
 
       {/* SEÇÃO 3: SAÚDE E ECC */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pb-20">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 pb-20">
         <div className="bg-white p-6 rounded-[32px] border shadow-sm h-[300px]">
            <h4 className="text-[10px] font-black text-slate-400 uppercase mb-4">Escore Corporal (ECC)</h4>
            <div className="h-full">
@@ -277,6 +411,27 @@ const ChartsView: React.FC<ChartsViewProps> = ({ sheep, groups }) => {
                  </Pie>
                  <Tooltip />
                </PieChart>
+             </ResponsiveContainer>
+           </div>
+        </div>
+
+        <div className="bg-white p-6 rounded-[32px] border shadow-sm h-[300px] flex flex-col">
+           <h4 className="text-[10px] font-black text-slate-400 uppercase mb-4">Distribuição Famacha (Anemia)</h4>
+           <div className="flex-1 min-h-0">
+             <ResponsiveContainer width="100%" height="100%">
+               <AreaChart data={famachaData}>
+                 <defs>
+                   <linearGradient id="colorFam" x1="0" y1="0" x2="0" y2="1">
+                     <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.2}/>
+                     <stop offset="95%" stopColor="#f59e0b" stopOpacity={0}/>
+                   </linearGradient>
+                 </defs>
+                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                 <XAxis dataKey="grau" axisLine={false} tickLine={false} tick={{fontSize: 9, fontWeight:'bold'}} />
+                 <YAxis axisLine={false} tickLine={false} tick={{fontSize: 9}} />
+                 <Tooltip />
+                 <Area type="monotone" dataKey="total" stroke="#f59e0b" strokeWidth={3} fillOpacity={1} fill="url(#colorFam)" />
+               </AreaChart>
              </ResponsiveContainer>
            </div>
         </div>

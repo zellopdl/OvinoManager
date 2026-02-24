@@ -12,6 +12,8 @@ import PaddockManager from './modulo/cadastros/PaddockManager.tsx';
 import SupplierManager from './modulo/cadastros/SupplierManager.tsx';
 import LogoGenerator from './modulo/sistema/LogoGenerator.tsx';
 import WeightManager from './modulo/manejo/WeightManager.tsx';
+import ECCManager from './modulo/manejo/ECCManager.tsx';
+import FamachaManager from './modulo/manejo/FamachaManager.tsx';
 import ReproductionManager from './modulo/reproducao/ReproductionManager.tsx';
 import Login from './modulo/sistema/Login.tsx';
 
@@ -186,6 +188,8 @@ const App: React.FC = () => {
       case 'guia': return <KnowledgeAssistant />;
       case 'manejo': return <ManejoManager sheep={safeSheep} paddocks={paddocks} groups={groups} onRefreshSheep={loadInitialData} managerPassword={managerPassword} />;
       case 'weight': return <WeightManager sheep={safeSheep} groups={groups} onRefresh={loadInitialData} />;
+      case 'ecc': return <ECCManager sheep={safeSheep} groups={groups} onRefresh={loadInitialData} />;
+      case 'famacha': return <FamachaManager sheep={safeSheep} groups={groups} onRefresh={loadInitialData} />;
       case 'repro': return <ReproductionManager sheep={safeSheep} groups={groups} onRefresh={loadInitialData} managerPassword={managerPassword} />;
       case 'sheep':
         return view === 'list' ? (

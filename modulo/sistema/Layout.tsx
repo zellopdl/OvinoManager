@@ -25,6 +25,8 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab, head
     { id: 'charts', label: 'Análises', icon: '📈', category: 'Principal' },
     { id: 'sheep', label: 'Rebanho', icon: '🐑', category: 'Principal' },
     { id: 'weight', label: 'Pesagem', icon: '⚖️', category: 'Operacional' },
+    { id: 'ecc', label: 'ECC', icon: '📏', category: 'Operacional' },
+    { id: 'famacha', label: 'Famacha', icon: '👁️', category: 'Operacional' },
     { id: 'repro', label: 'Reprodução', icon: '🧬', category: 'Operacional' },
     { id: 'manejo', label: 'Agenda', icon: '📅', category: 'Operacional' },
     { id: 'guia', label: 'Consultoria', icon: '💡', category: 'Suporte' },
