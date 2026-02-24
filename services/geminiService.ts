@@ -4,7 +4,8 @@ import { Sheep } from "../types";
 
 // Função para obter o cliente sempre com a chave mais recente do ambiente
 const getAIClient = () => {
-  return new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
+  const key = process.env.GEMINI_API_KEY || (import.meta as any).env?.VITE_GEMINI_API_KEY || "";
+  return new GoogleGenAI({ apiKey: key });
 };
 
 const handleAIError = (error: any): string => {
@@ -19,8 +20,10 @@ const handleAIError = (error: any): string => {
     errorMessage = JSON.stringify(error);
   }
 
-  if (!process.env.GEMINI_API_KEY) {
-    return "⚠️ CONFIGURAÇÃO PENDENTE: A variável de ambiente GEMINI_API_KEY não foi encontrada nas configurações do Vercel.";
+  const hasKey = !!(process.env.GEMINI_API_KEY || (import.meta as any).env?.VITE_GEMINI_API_KEY);
+
+  if (!hasKey) {
+    return "⚠️ CONFIGURAÇÃO PENDENTE: A variável de ambiente GEMINI_API_KEY (ou VITE_GEMINI_API_KEY) não foi encontrada.";
   }
 
   if (errorMessage.includes("API key not valid") || 

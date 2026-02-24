@@ -32,7 +32,9 @@ const App: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'online' | 'local'>('connecting');
-  const [aiStatus, setAiStatus] = useState<'online' | 'error' | 'none'>(process.env.GEMINI_API_KEY ? 'online' : 'none');
+  const [aiStatus, setAiStatus] = useState<'online' | 'error' | 'none'>(
+    (process.env.GEMINI_API_KEY || (import.meta as any).env?.VITE_GEMINI_API_KEY) ? 'online' : 'none'
+  );
   
   useEffect(() => {
     const checkAiKey = async () => {
