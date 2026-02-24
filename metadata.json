@@ -1,0 +1,7 @@
+{
+  "name": "OviManager - Gestão de Ovinocultura",
+  "description": "Um sistema avançado para controle e gerenciamento de criação de ovelhas, incluindo rastreabilidade, saúde, genealogia e insights inteligentes via Gemini AI.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}

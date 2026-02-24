@@ -1,0 +1,20 @@
+LISTA DE VARIÁVEIS DE AMBIENTE PARA O VERCEL (OviManager)
+
+Para que o sistema funcione corretamente na nuvem (Vercel), você deve adicionar estas 3 chaves nas configurações de "Environment Variables" do seu projeto:
+
+1. API_KEY
+   - O que é: Sua chave da API do Google Gemini.
+   - Onde obter: https://aistudio.google.com/app/apikey
+   - Função: Ativa a Inteligência Artificial (Radar de Manejo e Consultoria).
+
+2. SUPABASE_URL
+   - O que é: A URL do seu projeto no Supabase.
+   - Onde obter: No painel do Supabase > Project Settings > API.
+   - Exemplo: https://xyz.supabase.co
+
+3. SUPABASE_ANON_KEY
+   - O que é: A chave "anon" (pública) do seu banco de dados.
+   - Onde obter: No painel do Supabase > Project Settings > API.
+   - Exemplo: eyJhbGciOiJIUzI1Ni...
+
+DICA: Após inserir essas chaves no Vercel, você precisará fazer um novo "Deploy" para que elas passem a valer.
