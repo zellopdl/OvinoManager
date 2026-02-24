@@ -228,14 +228,14 @@ const ManejoManager: React.FC<ManejoManagerProps> = ({ sheep, paddocks, groups, 
       {/* MODAL REGISTRAR EXECUÇÃO (OPERADOR) */}
       {completingTask && (
         <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md">
-           <div className="bg-white w-full max-w-lg rounded-[40px] p-8 shadow-2xl animate-in zoom-in-95">
-              <div className="text-center mb-8">
+           <div className="bg-white w-full max-w-lg rounded-[40px] p-8 shadow-2xl animate-in zoom-in-95 max-h-[90vh] flex flex-col">
+              <div className="text-center mb-8 shrink-0">
                  <div className="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-3xl flex items-center justify-center text-2xl mx-auto mb-4 shadow-sm">👷‍♂️</div>
                  <h3 className="text-xl font-black text-slate-800 uppercase leading-tight">Finalizar Atividade</h3>
                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-2">{completingTask.titulo}</p>
               </div>
 
-              <div className="space-y-6">
+              <div className="space-y-6 overflow-y-auto custom-scrollbar flex-1 pr-2">
                  {completingTask.procedimento && (
                     <div className="bg-amber-50 p-5 rounded-3xl border border-amber-100">
                        <p className="text-[9px] font-black text-amber-600 uppercase mb-2 ml-1">Instruções do Gerente:</p>
@@ -254,7 +254,7 @@ const ManejoManager: React.FC<ManejoManagerProps> = ({ sheep, paddocks, groups, 
                  </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 mt-10">
+              <div className="grid grid-cols-2 gap-4 mt-10 shrink-0">
                  <button onClick={() => { setCompletingTask(null); setExecutor(''); setNotes(''); }} className="py-4 text-slate-400 font-black uppercase text-[10px] hover:text-slate-600">Descartar</button>
                  <button onClick={handleComplete} disabled={!executor.trim()} className="py-4 bg-emerald-600 text-white rounded-2xl font-black uppercase text-[11px] shadow-xl shadow-emerald-100 active:scale-95 disabled:opacity-30 transition-all">Confirmar Realização</button>
               </div>
