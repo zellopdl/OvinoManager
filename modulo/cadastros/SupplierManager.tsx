@@ -41,9 +41,12 @@ const SupplierManager: React.FC<SupplierManagerProps> = ({ initialData, onRefres
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 px-4">
-        <h2 className="text-xl font-black uppercase tracking-tight">🚚 Fornecedores</h2>
-        <button onClick={() => setIsFormOpen(true)} className="w-full sm:w-auto px-6 py-2 bg-emerald-600 text-white rounded-xl font-black text-[10px] uppercase shadow-lg">Novo Fornecedor</button>
+      <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h2 className="text-xl font-black uppercase tracking-tight text-slate-800">Fornecedores</h2>
+          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Gestão de parceiros e suprimentos</p>
+        </div>
+        <button onClick={() => setIsFormOpen(true)} className="w-full sm:w-auto px-6 py-3 bg-emerald-600 text-white rounded-2xl font-black text-[11px] uppercase shadow-lg active:scale-95 transition-all">Novo Fornecedor</button>
       </div>
 
       {isFormOpen && (

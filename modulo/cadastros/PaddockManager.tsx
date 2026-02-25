@@ -57,9 +57,9 @@ const PaddockManager: React.FC<PaddockManagerProps> = ({ initialData, onRefresh,
 
   return (
     <div className="max-w-5xl mx-auto space-y-6 animate-in fade-in duration-500">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 px-4">
+      <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h2 className="text-2xl font-black uppercase tracking-tight text-slate-800">Mapa de Piquetes</h2>
+          <h2 className="text-xl sm:text-2xl font-black uppercase tracking-tight text-slate-800">Mapa de Piquetes</h2>
           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Gerenciamento de áreas e lotação instantânea</p>
         </div>
         <button onClick={() => setIsFormOpen(true)} className="w-full sm:w-auto px-8 py-3 bg-emerald-600 text-white rounded-2xl font-black text-[11px] uppercase shadow-lg shadow-emerald-900/10 active:scale-95 transition-all">Novo Piquete</button>

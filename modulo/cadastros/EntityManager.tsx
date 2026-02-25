@@ -52,10 +52,16 @@ const EntityManager: React.FC<EntityManagerProps> = ({ title, tableName, icon, i
 
   return (
     <div className="max-w-2xl mx-auto space-y-6 animate-in fade-in">
+      <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h2 className="text-xl font-black uppercase tracking-tight text-slate-800 flex items-center gap-3">
+            <span className="text-2xl">{icon}</span> {title}
+          </h2>
+          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Gerenciamento de {title.toLowerCase()}</p>
+        </div>
+      </div>
+
       <div className="bg-white p-6 sm:p-8 rounded-[32px] sm:rounded-[40px] border border-slate-200 shadow-sm">
-        <h2 className="text-lg sm:text-xl font-black uppercase flex items-center gap-3 mb-6">
-          <span className="text-xl sm:text-2xl">{icon}</span> {title}
-        </h2>
         <form onSubmit={handleAdd} className="space-y-4">
           <div className="flex flex-col sm:flex-row gap-3">
             <input 
