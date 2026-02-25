@@ -66,34 +66,34 @@ const PaddockManager: React.FC<PaddockManagerProps> = ({ initialData, onRefresh,
       </div>
 
       {isFormOpen && (
-        <div className="fixed inset-0 z-[600] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm">
-          <div className="bg-white p-6 sm:p-10 rounded-[32px] sm:rounded-[40px] border border-slate-200 shadow-2xl animate-in zoom-in-95 w-full max-w-2xl overflow-y-auto max-h-[90vh]">
-            <div className="mb-8">
-              <h3 className="text-xl font-black text-slate-800 uppercase">{editingPaddock ? 'Editar Área' : 'Nova Área de Pastagem'}</h3>
-              <p className="text-[10px] font-bold text-slate-400 uppercase mt-1">Configure os limites técnicos do piquete</p>
+        <div className="fixed inset-0 z-[600] flex items-center justify-center p-2 sm:p-4 bg-slate-900/80 backdrop-blur-sm">
+          <div className="bg-white p-5 sm:p-10 rounded-[24px] sm:rounded-[40px] border border-slate-200 shadow-2xl animate-in zoom-in-95 w-full max-w-2xl overflow-y-auto max-h-[95vh]">
+            <div className="mb-6 sm:mb-8">
+              <h3 className="text-lg sm:text-xl font-black text-slate-800 uppercase">{editingPaddock ? 'Editar Área' : 'Nova Área de Pastagem'}</h3>
+              <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase mt-1">Configure os limites técnicos do piquete</p>
             </div>
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
                 <div className="md:col-span-2">
-                  <label className="block text-[9px] font-black text-slate-400 uppercase mb-2 ml-1">Identificação do Piquete *</label>
-                  <input required autoFocus className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl font-black uppercase text-sm focus:border-emerald-500 transition-all outline-none" value={formData.piquete} onChange={e => setFormData({...formData, piquete: e.target.value})} placeholder="EX: PIQUETE MATERNIDADE" />
+                  <label className="block text-[8px] sm:text-[9px] font-black text-slate-400 uppercase mb-1 sm:mb-2 ml-1">Identificação do Piquete *</label>
+                  <input required autoFocus className="w-full p-3 sm:p-4 bg-slate-50 border border-slate-200 rounded-xl sm:rounded-2xl font-black uppercase text-xs sm:text-sm focus:border-emerald-500 transition-all outline-none" value={formData.piquete} onChange={e => setFormData({...formData, piquete: e.target.value})} placeholder="EX: PIQUETE MATERNIDADE" />
                 </div>
                 <div>
-                  <label className="block text-[9px] font-black text-slate-400 uppercase mb-2 ml-1">Área Total (Hectares)</label>
-                  <input type="number" step="0.1" className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl font-black text-sm outline-none focus:border-emerald-500" value={formData.tamanho} onChange={e => setFormData({...formData, tamanho: e.target.value})} placeholder="EX: 1.5" />
+                  <label className="block text-[8px] sm:text-[9px] font-black text-slate-400 uppercase mb-1 sm:mb-2 ml-1">Área Total (Hectares)</label>
+                  <input type="number" step="0.1" className="w-full p-3 sm:p-4 bg-slate-50 border border-slate-200 rounded-xl sm:rounded-2xl font-black text-xs sm:text-sm outline-none focus:border-emerald-500" value={formData.tamanho} onChange={e => setFormData({...formData, tamanho: e.target.value})} placeholder="EX: 1.5" />
                 </div>
                 <div>
-                  <label className="block text-[9px] font-black text-slate-400 uppercase mb-2 ml-1">Lotação Máxima (Cabeças) *</label>
-                  <input type="number" required className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl font-black text-sm outline-none focus:border-emerald-500" value={formData.lotacao} onChange={e => setFormData({...formData, lotacao: e.target.value})} />
+                  <label className="block text-[8px] sm:text-[9px] font-black text-slate-400 uppercase mb-1 sm:mb-2 ml-1">Lotação Máxima (Cabeças) *</label>
+                  <input type="number" required className="w-full p-3 sm:p-4 bg-slate-50 border border-slate-200 rounded-xl sm:rounded-2xl font-black text-xs sm:text-sm outline-none focus:border-emerald-500" value={formData.lotacao} onChange={e => setFormData({...formData, lotacao: e.target.value})} />
                 </div>
                 <div className="md:col-span-2">
-                  <label className="block text-[9px] font-black text-slate-400 uppercase mb-2 ml-1">Tipo de Pastagem (Grama)</label>
-                  <input className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl font-black uppercase text-sm outline-none focus:border-emerald-500" value={formData.grama} onChange={e => setFormData({...formData, grama: e.target.value})} placeholder="EX: TIFTON 85, BRASILIENSE..." />
+                  <label className="block text-[8px] sm:text-[9px] font-black text-slate-400 uppercase mb-1 sm:mb-2 ml-1">Tipo de Pastagem (Grama)</label>
+                  <input className="w-full p-3 sm:p-4 bg-slate-50 border border-slate-200 rounded-xl sm:rounded-2xl font-black uppercase text-xs sm:text-sm outline-none focus:border-emerald-500" value={formData.grama} onChange={e => setFormData({...formData, grama: e.target.value})} placeholder="EX: TIFTON 85, BRASILIENSE..." />
                 </div>
               </div>
-              <div className="flex flex-col sm:flex-row justify-end gap-3 mt-8 pt-6 border-t border-slate-50">
-                 <button type="button" onClick={() => { setIsFormOpen(false); setEditingPaddock(null); }} className="px-8 py-4 text-slate-400 font-black uppercase text-[11px]">Cancelar</button>
-                 <button type="submit" className="px-12 py-4 bg-slate-900 text-white rounded-2xl font-black uppercase text-[11px] shadow-xl active:scale-95 transition-all">Confirmar Registro</button>
+              <div className="flex flex-col sm:flex-row justify-end gap-2 sm:gap-3 mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-slate-50">
+                 <button type="button" onClick={() => { setIsFormOpen(false); setEditingPaddock(null); }} className="px-8 py-3 sm:py-4 text-slate-400 font-black uppercase text-[10px] sm:text-[11px]">Cancelar</button>
+                 <button type="submit" className="px-12 py-3 sm:py-4 bg-slate-900 text-white rounded-xl sm:rounded-2xl font-black uppercase text-[10px] sm:text-[11px] shadow-xl active:scale-95 transition-all">Confirmar Registro</button>
               </div>
             </form>
           </div>
@@ -101,7 +101,8 @@ const PaddockManager: React.FC<PaddockManagerProps> = ({ initialData, onRefresh,
       )}
 
       <div className="bg-white rounded-[40px] border border-slate-200 shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
+        {/* Desktop Table View */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left min-w-[800px]">
             <thead className="bg-slate-50 text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] border-b">
             <tr>
@@ -160,9 +161,58 @@ const PaddockManager: React.FC<PaddockManagerProps> = ({ initialData, onRefresh,
               <tr><td colSpan={5} className="p-20 text-center text-slate-300 font-black uppercase text-[10px] tracking-widest">Nenhum piquete cadastrado no sistema</td></tr>
             )}
           </tbody>
-        </table>
+          </table>
+        </div>
+
+        {/* Mobile Card View */}
+        <div className="md:hidden divide-y">
+          {initialData.map(p => {
+            const occupants = getSheepInPaddock(p.id);
+            const occupancyRate = (occupants.length / p.lotacao) * 100;
+            return (
+              <div key={p.id} className="p-6 space-y-4 active:bg-slate-50 transition-colors" onClick={() => setViewingSheepList(p)}>
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="font-black uppercase text-slate-800 text-base">{p.piquete}</h3>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase">{p.tamanho || '0'} ha • {p.grama || 'Sem pastagem'}</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={(e) => handleEdit(p, e)} className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-600">✏️</button>
+                    <button onClick={(e) => handleDelete(p.id, e)} className="p-3 bg-rose-50 text-rose-500 rounded-xl">🗑️</button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                    <p className="text-[8px] font-black text-slate-400 uppercase mb-1">Capacidade</p>
+                    <p className="text-sm font-black text-slate-700">{p.lotacao} <span className="text-[10px] opacity-40">Cab.</span></p>
+                  </div>
+                  <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                    <p className="text-[8px] font-black text-slate-400 uppercase mb-1">Ocupação</p>
+                    <p className={`text-sm font-black ${occupancyRate > 90 ? 'text-rose-600' : 'text-emerald-600'}`}>{occupants.length} <span className="text-[10px] opacity-40">Animais</span></p>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <div className="flex justify-between items-center text-[9px] font-black uppercase">
+                    <span className="text-slate-400">Taxa de Ocupação</span>
+                    <span className={occupancyRate > 90 ? 'text-rose-600' : 'text-emerald-600'}>{Math.round(occupancyRate)}%</span>
+                  </div>
+                  <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                    <div 
+                      className={`h-full transition-all duration-700 ${occupancyRate > 90 ? 'bg-rose-500' : occupancyRate > 70 ? 'bg-amber-500' : 'bg-emerald-500'}`} 
+                      style={{ width: `${Math.min(occupancyRate, 100)}%` }} 
+                    />
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+          {initialData.length === 0 && (
+            <div className="p-12 text-center text-slate-300 font-black uppercase text-[10px] tracking-widest">Nenhum piquete cadastrado</div>
+          )}
+        </div>
       </div>
-    </div>
 
       {/* MODAL DE LISTAGEM DE ANIMAIS NO PIQUETE */}
       {viewingSheepList && (
