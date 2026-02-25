@@ -44,19 +44,16 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab, head
     setIsMobileMenuOpen(false);
   };
 
-  const handleLogout = async () => {
-    if (window.confirm("Deseja realmente sair do sistema?")) {
-      try {
-        if (isSupabaseConfigured) {
-          await supabase.auth.signOut();
-        } else {
-          localStorage.clear();
-          window.location.reload();
-        }
-      } catch (e) {
-        console.error("Erro ao sair:", e);
-        window.location.reload();
+  const handleLogout = () => {
+    try {
+      localStorage.clear();
+      sessionStorage.clear();
+      if (isSupabaseConfigured) {
+        supabase.auth.signOut().catch(() => {});
       }
+      window.location.replace('/');
+    } catch (e) {
+      window.location.replace('/');
     }
   };
 

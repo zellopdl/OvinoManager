@@ -151,4 +151,41 @@ CREATE TABLE IF NOT EXISTS public.reproducao (
   observacoes TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
+
+-- 7. Tabela de Manejos (Tarefas)
+CREATE TABLE IF NOT EXISTS public.manejos (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  titulo TEXT NOT NULL,
+  procedimento TEXT,
+  tipo TEXT DEFAULT 'recorrente',
+  recorrencia TEXT DEFAULT 'nenhuma',
+  recorrencia_config JSONB DEFAULT '{}',
+  grupo_id UUID REFERENCES public.grupos(id) ON DELETE SET NULL,
+  data_planejada DATE NOT NULL,
+  hora_planejada TIME DEFAULT '08:00',
+  status TEXT DEFAULT 'pendente',
+  data_execucao TIMESTAMP WITH TIME ZONE,
+  colaborador TEXT,
+  observacoes TEXT,
+  editado_por_gerente BOOLEAN DEFAULT false,
+  data_ultima_edicao TIMESTAMP WITH TIME ZONE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.manejo_ovelhas (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  manejo_id UUID REFERENCES public.manejos(id) ON DELETE CASCADE,
+  ovelha_id UUID REFERENCES public.ovelhas(id) ON DELETE CASCADE
+);
+
+-- 8. Mural de Avisos (Mensagens Gerais)
+CREATE TABLE IF NOT EXISTS public.avisos (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  titulo TEXT NOT NULL,
+  conteudo TEXT NOT NULL,
+  prioridade TEXT DEFAULT 'normal',
+  autor TEXT,
+  confirmacoes JSONB DEFAULT '[]',
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
 `;

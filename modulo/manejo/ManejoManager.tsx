@@ -3,6 +3,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Manejo, Sheep, Paddock, Group, StatusManejo, TipoManejo, Recorrencia, RecorrenciaConfig } from '../../types';
 import { manejoService } from './manejoService.ts';
 import { getLocalDateString, formatBrazilianDate } from '../../utils';
+import { avisoService, Aviso } from '../operacional/avisoService';
 import ManejoCalendar from './ManejoCalendar.tsx';
 
 interface ManejoManagerProps {
@@ -15,10 +16,13 @@ interface ManejoManagerProps {
 
 const ManejoManager: React.FC<ManejoManagerProps> = ({ sheep, paddocks, groups, onRefreshSheep, managerPassword }) => {
   const [manejos, setManejos] = useState<Manejo[]>([]);
+  const [avisos, setAvisos] = useState<Aviso[]>([]);
   const [loading, setLoading] = useState(true);
   const [completingTask, setCompletingTask] = useState<Manejo | null>(null);
   const [viewingTask, setViewingTask] = useState<Manejo | null>(null);
   const [editingTask, setEditingTask] = useState<Manejo | null>(null);
+  const [isAvisoModalOpen, setIsAvisoModalOpen] = useState(false);
+  const [newAviso, setNewAviso] = useState({ titulo: '', conteudo: '', prioridade: 'normal' as any });
   
   const [authModal, setAuthModal] = useState<{ type: 'edit' | 'delete', task: Manejo } | null>(null);
   const [passInput, setPassInput] = useState('');
@@ -50,8 +54,18 @@ const ManejoManager: React.FC<ManejoManagerProps> = ({ sheep, paddocks, groups, 
   const loadData = async () => {
     setLoading(true);
     try {
-      const data = await manejoService.getAll();
-      setManejos(data);
+      const mTasks = await manejoService.getAll();
+      setManejos(mTasks);
+      
+      try {
+        const aNotices = await avisoService.getAll();
+        setAvisos(aNotices);
+      } catch (e) {
+        console.warn("Tabela 'avisos' não encontrada.");
+        setAvisos([]);
+      }
+    } catch (e) {
+      console.error("Erro ao carregar dados:", e);
     } finally {
       setLoading(false);
     }
@@ -138,6 +152,23 @@ const ManejoManager: React.FC<ManejoManagerProps> = ({ sheep, paddocks, groups, 
     } catch (e) { alert("Erro ao processar."); }
   };
 
+  const handleSaveAviso = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await avisoService.create({ ...newAviso, autor: 'Gerente' });
+      setIsAvisoModalOpen(false);
+      setNewAviso({ titulo: '', conteudo: '', prioridade: 'normal' });
+      await loadData();
+    } catch (e) { alert("Erro ao salvar aviso."); }
+  };
+
+  const handleDeleteAviso = async (id: string) => {
+    if (confirm("Excluir aviso?")) {
+      await avisoService.delete(id);
+      await loadData();
+    }
+  };
+
   const handleComplete = async () => {
     if (!completingTask || !executor.trim()) return;
     try {
@@ -184,7 +215,10 @@ const ManejoManager: React.FC<ManejoManagerProps> = ({ sheep, paddocks, groups, 
     <div className="space-y-8 pb-20 max-w-6xl mx-auto animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 rounded-[32px] border border-slate-200 shadow-sm">
         <div><h2 className="text-2xl font-black text-slate-800 uppercase tracking-tight">Painel de Operações</h2><p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mt-1">Gestão Completa e Auditoria de Campo</p></div>
-        <button onClick={() => { setEditingTask(null); setIsFormOpen(true); }} className="px-8 py-3 bg-indigo-600 text-white rounded-2xl font-black uppercase text-[11px] shadow-lg active:scale-95 transition-all">Agendar Manejo</button>
+        <div className="flex gap-2">
+          <button onClick={() => setIsAvisoModalOpen(true)} className="px-6 py-3 bg-slate-100 text-slate-600 rounded-2xl font-black uppercase text-[11px] active:scale-95 transition-all">Mural de Avisos</button>
+          <button onClick={() => { setEditingTask(null); setIsFormOpen(true); }} className="px-8 py-3 bg-indigo-600 text-white rounded-2xl font-black uppercase text-[11px] shadow-lg active:scale-95 transition-all">Agendar Manejo</button>
+        </div>
       </div>
 
       <div className="space-y-4">
@@ -404,6 +438,66 @@ const ManejoManager: React.FC<ManejoManagerProps> = ({ sheep, paddocks, groups, 
                    <button type="submit" className="flex-1 py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase text-[11px] shadow-xl shadow-indigo-100 active:scale-95 transition-all">Confirmar Agenda</button>
                 </div>
              </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL MURAL DE AVISOS (GERENTE) */}
+      {isAvisoModalOpen && (
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md">
+          <div className="bg-white w-full max-w-2xl rounded-[40px] p-8 shadow-2xl animate-in zoom-in-95 max-h-[90vh] flex flex-col">
+            <div className="flex justify-between items-center mb-8 shrink-0">
+              <h3 className="text-xl font-black text-slate-800 uppercase">Mural de Avisos Gerais</h3>
+              <button onClick={() => setIsAvisoModalOpen(false)} className="w-10 h-10 bg-slate-50 rounded-full text-slate-400 flex items-center justify-center">✕</button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-6">
+              <form onSubmit={handleSaveAviso} className="bg-slate-50 p-6 rounded-[32px] border border-slate-200 space-y-4">
+                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Novo Aviso Rápido</p>
+                <input required className="w-full p-4 bg-white border border-slate-200 rounded-2xl font-black uppercase text-xs outline-none focus:border-indigo-500" placeholder="Título do Aviso" value={newAviso.titulo} onChange={e => setNewAviso({...newAviso, titulo: e.target.value.toUpperCase()})} />
+                <textarea required className="w-full p-4 bg-white border border-slate-200 rounded-2xl font-medium text-xs outline-none focus:border-indigo-500 resize-none" rows={2} placeholder="Conteúdo da mensagem..." value={newAviso.conteudo} onChange={e => setNewAviso({...newAviso, conteudo: e.target.value})} />
+                <div className="flex gap-2">
+                  <select className="flex-1 p-3 bg-white border border-slate-200 rounded-xl font-black text-[10px] uppercase" value={newAviso.prioridade} onChange={e => setNewAviso({...newAviso, prioridade: e.target.value})}>
+                    <option value="normal">Prioridade Normal</option>
+                    <option value="alta">Prioridade Alta</option>
+                    <option value="urgente">Urgente</option>
+                  </select>
+                  <button type="submit" className="px-8 py-3 bg-indigo-600 text-white rounded-xl font-black uppercase text-[10px]">Postar</button>
+                </div>
+              </form>
+
+              <div className="space-y-3">
+                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Avisos Ativos</p>
+                {avisos.map(a => (
+                  <div key={a.id} className="p-5 bg-white border border-slate-100 rounded-3xl flex flex-col gap-3 shadow-sm">
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <h4 className="font-black text-slate-800 text-xs uppercase">{a.titulo}</h4>
+                        <p className="text-[10px] text-slate-400 mt-1">{a.conteudo}</p>
+                      </div>
+                      <button onClick={() => handleDeleteAviso(a.id)} className="w-8 h-8 bg-rose-50 text-rose-400 rounded-lg flex items-center justify-center text-xs">🗑️</button>
+                    </div>
+                    
+                    {/* CONFIRMAÇÕES */}
+                    <div className="pt-3 border-t border-slate-50">
+                      <p className="text-[8px] font-black text-slate-300 uppercase mb-2">Confirmações de Leitura:</p>
+                      <div className="flex flex-wrap gap-2">
+                        {(a as any).confirmacoes?.length > 0 ? (
+                          (a as any).confirmacoes.map((c: any, i: number) => (
+                            <span key={i} className="bg-emerald-50 text-emerald-600 px-2 py-1 rounded-md text-[8px] font-black uppercase border border-emerald-100">
+                              ✓ {c.user} ({new Date(c.at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })})
+                            </span>
+                          ))
+                        ) : (
+                          <span className="text-[8px] font-bold text-slate-300 italic">Nenhuma confirmação ainda</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {avisos.length === 0 && <p className="text-center py-10 text-[10px] font-black text-slate-300 uppercase">Nenhum aviso postado</p>}
+              </div>
+            </div>
           </div>
         </div>
       )}

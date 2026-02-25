@@ -16,6 +16,7 @@ import ECCManager from './modulo/manejo/ECCManager.tsx';
 import FamachaManager from './modulo/manejo/FamachaManager.tsx';
 import ReproductionManager from './modulo/reproducao/ReproductionManager.tsx';
 import Login from './modulo/sistema/Login.tsx';
+import NoticeBoard from './modulo/operacional/NoticeBoard.tsx';
 
 import { Sheep, Breed, Supplier, Group, Paddock, BreedingPlan } from './types.ts';
 import { sheepService } from './modulo/rebanho/sheepService.ts';
@@ -87,9 +88,21 @@ const App: React.FC = () => {
 
   const loadInitialData = useCallback(async (forceLocal = false) => {
     if (!session && isSupabaseConfigured) return;
+    
+    // OTIMIZAÇÃO: Se for operador, não carrega os dados pesados do rebanho aqui
+    // O NoticeBoard já carrega o que precisa de forma independente
+    const isOperator = session?.user?.email === 'operador@ovimanager.com';
+    if (isOperator) {
+      setLoading(false);
+      setConnectionStatus('online');
+      return;
+    }
+
     try {
       if (!forceLocal && isSupabaseConfigured) setConnectionStatus('connecting');
       else setConnectionStatus('local');
+      
+      // Carregamento em paralelo para máxima velocidade
       const [sData, bData, supData, gData, pData, bpData] = await Promise.all([
         sheepService.getAll().catch(() => []),
         entityService.getAll('racas').catch(() => []),
@@ -98,6 +111,7 @@ const App: React.FC = () => {
         entityService.getAll('piquetes').catch(() => []),
         breedingPlanService.getAll().catch(() => [])
       ]);
+      
       setSheep(sData || []); 
       setBreeds(bData || []); 
       setSuppliers(supData || []); 
@@ -149,6 +163,19 @@ const App: React.FC = () => {
   };
 
   const copySqlSchema = () => { navigator.clipboard.writeText(SUPABASE_SCHEMA_SQL); alert("SQL Copiado!"); };
+
+  const handleLogout = () => {
+    try {
+      localStorage.clear();
+      sessionStorage.clear();
+      if (isSupabaseConfigured) {
+        supabase.auth.signOut().catch(() => {});
+      }
+      window.location.replace('/');
+    } catch (e) {
+      window.location.replace('/');
+    }
+  };
 
   const HeaderActions = (
     <div className="flex items-center gap-2">
@@ -222,7 +249,7 @@ const App: React.FC = () => {
               <div className="bg-white p-6 rounded-2xl border">
                 <button onClick={copySqlSchema} className="w-full py-3 bg-slate-900 text-white rounded-xl font-black uppercase text-[10px]">Copiar Script SQL Supabase</button>
               </div>
-              <button onClick={async () => { if (isSupabaseConfigured) await supabase.auth.signOut(); }} className="w-full py-4 bg-rose-50 text-rose-600 rounded-xl font-black uppercase text-[10px]">Sair</button>
+              <button onClick={handleLogout} className="w-full py-4 bg-rose-50 text-rose-600 rounded-xl font-black uppercase text-[10px]">Sair do Sistema</button>
             </div>
           )}
         </div>
@@ -231,8 +258,22 @@ const App: React.FC = () => {
     }
   };
 
-  if (authLoading) return <div className="min-h-screen bg-slate-900 flex items-center justify-center text-emerald-500">Aguarde...</div>;
+  if (authLoading) return (
+    <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+      <div className="text-center">
+        <div className="w-16 h-16 border-4 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin mx-auto mb-4"></div>
+        <p className="text-emerald-500 font-black uppercase tracking-widest text-xs animate-pulse">Verificando Credenciais...</p>
+      </div>
+    </div>
+  );
   if (!session && isSupabaseConfigured) return <Login />;
+
+  // VERIFICAÇÃO DE PERFIL OPERADOR (QUADRO DE AVISOS)
+  const isOperator = session?.user?.email === 'operador@ovimanager.com';
+
+  if (isOperator) {
+    return <NoticeBoard key="operator-notice-board" />;
+  }
 
   return (
     <Layout activeTab={activeTab} setActiveTab={setActiveTab} headerExtra={HeaderActions}>
