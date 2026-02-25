@@ -188,4 +188,7 @@ CREATE TABLE IF NOT EXISTS public.avisos (
   confirmacoes JSONB DEFAULT '[]',
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
+
+-- 9. CORREÇÕES / ATUALIZAÇÕES (Execute se as tabelas já existirem)
+ALTER TABLE public.avisos ADD COLUMN IF NOT EXISTS confirmacoes JSONB DEFAULT '[]'::jsonb;
 `;

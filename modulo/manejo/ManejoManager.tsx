@@ -5,6 +5,7 @@ import { manejoService } from './manejoService.ts';
 import { getLocalDateString, formatBrazilianDate } from '../../utils';
 import { avisoService, Aviso } from '../operacional/avisoService';
 import ManejoCalendar from './ManejoCalendar.tsx';
+import { supabase } from '../../lib/supabase';
 
 interface ManejoManagerProps {
   sheep: Sheep[];
@@ -71,7 +72,25 @@ const ManejoManager: React.FC<ManejoManagerProps> = ({ sheep, paddocks, groups, 
     }
   };
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => { 
+    loadData(); 
+    
+    // Inscrição em tempo real para atualizações de tarefas e avisos
+    const mChannel = supabase
+      .channel('manejo_updates')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'manejos' }, () => loadData())
+      .subscribe();
+
+    const aChannel = supabase
+      .channel('aviso_updates')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'avisos' }, () => loadData())
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(mChannel);
+      supabase.removeChannel(aChannel);
+    };
+  }, []);
 
   const today = getLocalDateString();
   const urgentTasks = useMemo(() => manejos.filter(m => m.status === StatusManejo.PENDENTE && m.dataPlanejada.split('T')[0] < today), [manejos, today]);
@@ -482,8 +501,8 @@ const ManejoManager: React.FC<ManejoManagerProps> = ({ sheep, paddocks, groups, 
                     <div className="pt-3 border-t border-slate-50">
                       <p className="text-[8px] font-black text-slate-300 uppercase mb-2">Confirmações de Leitura:</p>
                       <div className="flex flex-wrap gap-2">
-                        {(a as any).confirmacoes?.length > 0 ? (
-                          (a as any).confirmacoes.map((c: any, i: number) => (
+                        {a.confirmacoes && a.confirmacoes.length > 0 ? (
+                          a.confirmacoes.map((c, i) => (
                             <span key={i} className="bg-emerald-50 text-emerald-600 px-2 py-1 rounded-md text-[8px] font-black uppercase border border-emerald-100">
                               ✓ {c.user} ({new Date(c.at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })})
                             </span>

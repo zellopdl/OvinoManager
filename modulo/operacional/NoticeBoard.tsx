@@ -15,23 +15,19 @@ const NoticeBoard: React.FC = () => {
   const [notes, setNotes] = useState('');
   const [currentTime, setCurrentTime] = useState(new Date());
 
-  const loadData = async () => {
-    setLoading(true);
+  const loadData = async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
-      const mTasks = await manejoService.getAll();
+      const [mTasks, aNotices] = await Promise.all([
+        manejoService.getAll().catch(() => []),
+        avisoService.getAll().catch(() => [])
+      ]);
       setManejos(mTasks);
-      
-      try {
-        const aNotices = await avisoService.getAll();
-        setAvisos(aNotices);
-      } catch (e) {
-        console.warn("Tabela 'avisos' não encontrada.");
-        setAvisos([]);
-      }
+      setAvisos(aNotices);
     } catch (e) {
       console.error("Erro ao carregar dados:", e);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
@@ -41,13 +37,13 @@ const NoticeBoard: React.FC = () => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
 
     const mChannel = supabase
-      .channel('public:manejos')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'manejos' }, () => loadData())
+      .channel('noticeboard_manejos')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'manejos' }, () => loadData(true))
       .subscribe();
 
     const aChannel = supabase
-      .channel('public:avisos')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'avisos' }, () => loadData())
+      .channel('noticeboard_avisos')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'avisos' }, () => loadData(true))
       .subscribe();
 
     return () => {
@@ -73,18 +69,29 @@ const NoticeBoard: React.FC = () => {
       setCompletingTask(null);
       setExecutor('');
       setNotes('');
-      await loadData();
+      await loadData(true);
     } catch (e) {
       alert("Erro ao concluir tarefa.");
     }
   };
 
   const handleConfirmAviso = async (avisoId: string) => {
+    // Feedback visual imediato (Optimistic UI)
+    setAvisos(prev => prev.map(a => {
+      if (a.id === avisoId) {
+        const currentConf = a.confirmacoes || [];
+        return { ...a, confirmacoes: [...currentConf, { user: 'Operador', at: new Date().toISOString() }] };
+      }
+      return a;
+    }));
+
     try {
       await avisoService.confirmRead(avisoId, 'Operador');
-      await loadData();
+      // O real-time ou o loadData(true) vai sincronizar o estado final
+      await loadData(true);
     } catch (e) {
       alert("Erro ao confirmar leitura.");
+      await loadData(true); // Reverte o estado se der erro
     }
   };
 
@@ -145,9 +152,9 @@ const NoticeBoard: React.FC = () => {
         </div>
       </header>
 
-      <main className="flex-1 flex flex-col md:flex-row overflow-hidden p-6 md:p-10 gap-10">
+      <main className="flex-1 flex flex-col md:flex-row overflow-hidden p-6 md:p-10 gap-10 min-h-0">
         {/* COLUNA ESQUERDA: AVISOS URGENTES E MURAL */}
-        <div className="flex-1 flex flex-col gap-10 overflow-y-auto custom-scrollbar pr-4">
+        <div className="flex-1 flex flex-col gap-10 overflow-y-auto custom-scrollbar dark-scrollbar pr-4 min-h-0">
           <section className="space-y-6">
             <div className="flex items-center gap-4">
               <div className="w-3 h-3 bg-indigo-500 rounded-full animate-pulse"></div>
@@ -161,7 +168,7 @@ const NoticeBoard: React.FC = () => {
             ) : (
               <div className="grid grid-cols-1 gap-6">
                 {avisos.map(aviso => {
-                  const isConfirmed = (aviso as any).confirmacoes?.some((c: any) => c.user === 'Operador');
+                  const isConfirmed = aviso.confirmacoes?.some(c => c.user === 'Operador');
                   return (
                     <div 
                       key={aviso.id} 
@@ -213,7 +220,7 @@ const NoticeBoard: React.FC = () => {
         </div>
 
         {/* COLUNA DIREITA: TAREFAS DO DIA */}
-        <div className="w-full md:w-[500px] flex flex-col gap-10 overflow-y-auto custom-scrollbar pr-4">
+        <div className="w-full md:w-[500px] flex flex-col gap-10 overflow-y-auto custom-scrollbar dark-scrollbar pr-4 min-h-0">
           <section className="space-y-6">
             <div className="flex items-center gap-4">
               <div className="w-3 h-3 bg-emerald-500 rounded-full animate-pulse"></div>

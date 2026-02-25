@@ -7,6 +7,7 @@ export interface Aviso {
   conteudo: string;
   prioridade: 'normal' | 'alta' | 'urgente';
   autor?: string;
+  confirmacoes?: { user: string; at: string }[];
   created_at?: string;
 }
 
@@ -47,11 +48,16 @@ export const avisoService = {
     if (!isSupabaseConfigured) return;
     
     // Get current confirmations
-    const { data: aviso } = await supabase
+    const { data: aviso, error: fetchError } = await supabase
       .from('avisos')
       .select('confirmacoes')
       .eq('id', avisoId)
       .single();
+    
+    if (fetchError) {
+      console.error("Erro ao buscar confirmações:", fetchError);
+      throw new Error("Coluna 'confirmacoes' não encontrada. Execute o comando SQL fornecido.");
+    }
     
     const currentConfirmations = aviso?.confirmacoes || [];
     const alreadyConfirmed = currentConfirmations.some((c: any) => c.user === userName);
@@ -63,13 +69,13 @@ export const avisoService = {
       at: new Date().toISOString()
     };
 
-    const { error } = await supabase
+    const { error: updateError } = await supabase
       .from('avisos')
       .update({
         confirmacoes: [...currentConfirmations, newConfirmation]
       })
       .eq('id', avisoId);
 
-    if (error) throw error;
+    if (updateError) throw updateError;
   }
 };
