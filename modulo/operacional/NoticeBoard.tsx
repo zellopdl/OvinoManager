@@ -279,18 +279,12 @@ const NoticeBoard: React.FC = () => {
         </div>
       </main>
 
-      {/* FOOTER - BOTÃO DE SAÍDA DISCRETO MAS ACESSÍVEL */}
-      <footer className="p-8 border-t border-slate-800 flex justify-between items-center bg-slate-900/30 shrink-0 relative z-50">
+      {/* FOOTER - STATUS DO SISTEMA */}
+      <footer className="p-8 border-t border-slate-800 flex justify-center items-center bg-slate-900/30 shrink-0 relative z-50">
         <div className="flex items-center gap-4">
           <div className="w-3 h-3 bg-emerald-500 rounded-full animate-pulse"></div>
           <p className="text-xs font-black text-slate-500 uppercase tracking-widest">Sistema OviManager v3.5 • Conectado à Nuvem</p>
         </div>
-        <button 
-          onClick={handleLogout}
-          className="px-12 py-4 bg-slate-800 hover:bg-rose-600 text-slate-400 hover:text-white rounded-2xl font-black uppercase text-xs tracking-[0.2em] transition-all active:scale-95"
-        >
-          Sair do Sistema
-        </button>
       </footer>
 
       {/* MODAL DE EXECUÇÃO GIGANTE */}
