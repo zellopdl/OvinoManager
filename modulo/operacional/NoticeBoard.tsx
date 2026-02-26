@@ -125,7 +125,7 @@ const NoticeBoard: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col overflow-hidden">
+    <div className="h-screen bg-slate-950 text-slate-100 flex flex-col overflow-hidden">
       {/* HEADER GIGANTE - ESTILO KIOSK */}
       <header className="bg-slate-900/50 border-b border-slate-800 p-8 md:p-12 flex flex-col md:flex-row justify-between items-center gap-8 shrink-0 relative z-50">
         <div className="flex items-center gap-8">
@@ -152,9 +152,9 @@ const NoticeBoard: React.FC = () => {
         </div>
       </header>
 
-      <main className="flex-1 flex flex-col md:flex-row overflow-hidden p-6 md:p-10 gap-10 min-h-0">
+      <main className="flex-1 flex flex-col md:flex-row overflow-hidden p-4 md:p-10 gap-6 md:gap-10 min-h-0">
         {/* COLUNA ESQUERDA: AVISOS URGENTES E MURAL */}
-        <div className="flex-1 flex flex-col gap-10 overflow-y-auto custom-scrollbar dark-scrollbar pr-4 min-h-0">
+        <div className="flex-1 flex flex-col gap-6 md:gap-10 overflow-y-auto custom-scrollbar dark-scrollbar pr-2 md:pr-4 min-h-[300px] md:min-h-0">
           <section className="space-y-6">
             <div className="flex items-center gap-4">
               <div className="w-3 h-3 bg-indigo-500 rounded-full animate-pulse"></div>
@@ -220,7 +220,7 @@ const NoticeBoard: React.FC = () => {
         </div>
 
         {/* COLUNA DIREITA: TAREFAS DO DIA */}
-        <div className="w-full md:w-[500px] flex flex-col gap-10 overflow-y-auto custom-scrollbar dark-scrollbar pr-4 min-h-0">
+        <div className="w-full md:w-[450px] lg:w-[500px] flex flex-col gap-6 md:gap-10 overflow-y-auto custom-scrollbar dark-scrollbar pr-2 md:pr-4 min-h-[300px] md:min-h-0">
           <section className="space-y-6">
             <div className="flex items-center gap-4">
               <div className="w-3 h-3 bg-emerald-500 rounded-full animate-pulse"></div>
