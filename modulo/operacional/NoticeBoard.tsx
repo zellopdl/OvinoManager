@@ -14,6 +14,51 @@ const NoticeBoard: React.FC = () => {
   const [executor, setExecutor] = useState('');
   const [notes, setNotes] = useState('');
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [audioEnabled, setAudioEnabled] = useState(false);
+
+  const hasUrgentUnconfirmed = useMemo(() => 
+    avisos.some(a => a.prioridade === 'urgente' && !a.confirmacoes?.some(c => c.user === 'Operador')),
+  [avisos]);
+
+  useEffect(() => {
+    let timeoutId: any;
+    const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/1353/1353-preview.mp3'); // Som de telefone/alerta
+    
+    const playCycle = async () => {
+      if (!hasUrgentUnconfirmed || !audioEnabled) return;
+
+      for (let i = 0; i < 5; i++) {
+        // Verifica novamente se ainda há urgentes antes de cada toque
+        const stillHasUrgent = await avisoService.getAll().then(list => 
+          list.some(a => a.prioridade === 'urgente' && !a.confirmacoes?.some(c => c.user === 'Operador'))
+        ).catch(() => hasUrgentUnconfirmed);
+
+        if (!stillHasUrgent) break;
+
+        try {
+          audio.currentTime = 0;
+          await audio.play();
+          await new Promise(resolve => setTimeout(resolve, 3000)); // Espera 3 segundos entre toques
+        } catch (e) {
+          console.warn("Áudio bloqueado pelo navegador. Toque na tela para ativar.");
+          break;
+        }
+      }
+
+      if (hasUrgentUnconfirmed && audioEnabled) {
+        timeoutId = setTimeout(playCycle, 60000); // Pausa de 1 minuto
+      }
+    };
+
+    if (hasUrgentUnconfirmed && audioEnabled) {
+      playCycle();
+    }
+
+    return () => {
+      clearTimeout(timeoutId);
+      audio.pause();
+    };
+  }, [hasUrgentUnconfirmed, audioEnabled]);
 
   const loadData = async (silent = false) => {
     if (!silent) setLoading(true);
@@ -125,26 +170,34 @@ const NoticeBoard: React.FC = () => {
   }
 
   return (
-    <div className="h-screen bg-slate-950 text-slate-100 flex flex-col overflow-hidden">
-      {/* HEADER GIGANTE - ESTILO KIOSK */}
-      <header className="bg-slate-900/50 border-b border-slate-800 p-8 md:p-12 flex flex-col md:flex-row justify-between items-center gap-8 shrink-0 relative z-50">
-        <div className="flex items-center gap-8">
-          <div className="w-24 h-24 bg-emerald-600 rounded-[32px] flex items-center justify-center text-5xl shadow-2xl shadow-emerald-900/20">🐑</div>
+    <div 
+      className="h-screen bg-slate-950 text-slate-100 flex flex-col overflow-hidden"
+      onClick={() => !audioEnabled && setAudioEnabled(true)}
+    >
+      {/* ALERTA DE ÁUDIO DESATIVADO */}
+      {!audioEnabled && hasUrgentUnconfirmed && (
+        <div className="fixed top-0 left-0 w-full bg-rose-600 text-white p-2 text-center z-[2000] font-black uppercase text-xs animate-pulse">
+          Toque em qualquer lugar para ativar o alerta sonoro de urgência
+        </div>
+      )}
+      {/* HEADER COMPACTO - ESTILO KIOSK */}
+      <header className="bg-slate-900/50 border-b border-slate-800 p-4 md:p-6 flex flex-col md:flex-row justify-between items-center gap-4 shrink-0 relative z-50">
+        <div className="flex items-center gap-6">
+          <div className="w-16 h-16 bg-emerald-600 rounded-[20px] flex items-center justify-center text-3xl shadow-2xl shadow-emerald-900/20">🐑</div>
           <div>
-            <h1 className="text-4xl md:text-6xl font-black uppercase tracking-tighter leading-none">Quadro de Avisos</h1>
-            <p className="text-emerald-500 text-xl font-black uppercase tracking-[0.2em] mt-2">Operação de Campo • {formatBrazilianDate(today)}</p>
+            <h1 className="text-2xl md:text-4xl font-black uppercase tracking-tighter leading-none">Quadro de Avisos</h1>
+            <p className="text-emerald-500 text-sm font-black uppercase tracking-[0.2em] mt-1">Operação de Campo • {formatBrazilianDate(today)}</p>
           </div>
         </div>
-        <div className="flex items-center gap-8">
+        <div className="flex items-center gap-6">
           <div className="text-center md:text-right">
-            <p className="text-6xl md:text-8xl font-black tracking-tighter text-white tabular-nums leading-none">
+            <p className="text-4xl md:text-5xl font-black tracking-tighter text-white tabular-nums leading-none">
               {currentTime.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
             </p>
-            <p className="text-slate-500 text-lg font-bold uppercase tracking-widest mt-2">Horário de Brasília</p>
           </div>
           <button 
             onClick={handleLogout}
-            className="w-20 h-20 bg-slate-800 hover:bg-rose-600 text-slate-400 hover:text-white rounded-3xl flex items-center justify-center text-3xl transition-all shadow-xl active:scale-90"
+            className="w-12 h-12 bg-slate-800 hover:bg-rose-600 text-slate-400 hover:text-white rounded-xl flex items-center justify-center text-xl transition-all shadow-xl active:scale-90"
             title="Sair / Trocar Usuário"
           >
             🚪
@@ -199,7 +252,7 @@ const NoticeBoard: React.FC = () => {
                         {!isConfirmed ? (
                           <button 
                             onClick={() => handleConfirmAviso(aviso.id)}
-                            className={`px-10 py-5 rounded-3xl font-black uppercase text-sm tracking-widest shadow-xl active:scale-95 transition-all ${
+                            className={`px-6 py-3 rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 transition-all ${
                               aviso.prioridade === 'urgente' ? 'bg-white text-rose-600' : 'bg-emerald-600 text-white'
                             }`}
                           >
@@ -265,10 +318,10 @@ const NoticeBoard: React.FC = () => {
 
                       <div className="flex justify-between items-center">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-slate-800 rounded-2xl flex items-center justify-center text-xl">👥</div>
-                          <p className="text-xs font-black text-slate-500 uppercase">{task.grupoId || 'Geral'}</p>
+                          <div className="w-8 h-8 bg-slate-800 rounded-xl flex items-center justify-center text-lg">👥</div>
+                          <p className="text-[10px] font-black text-slate-500 uppercase">{task.grupoId || 'Geral'}</p>
                         </div>
-                        <div className="w-14 h-14 bg-emerald-600 text-white rounded-2xl flex items-center justify-center text-3xl shadow-xl shadow-emerald-900/20">✓</div>
+                        <div className="w-12 h-12 bg-emerald-600 text-white rounded-xl flex items-center justify-center text-2xl shadow-xl shadow-emerald-900/20">✓</div>
                       </div>
                     </div>
                   );
@@ -287,53 +340,93 @@ const NoticeBoard: React.FC = () => {
         </div>
       </footer>
 
-      {/* MODAL DE EXECUÇÃO GIGANTE */}
+      {/* MODAL DE EXECUÇÃO AMPLIADO - TELA CHEIA */}
       {completingTask && (
-        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6 bg-slate-950/95 backdrop-blur-xl">
-          <div className="bg-slate-900 w-full max-w-2xl rounded-[64px] p-12 border border-slate-800 shadow-2xl animate-in zoom-in-95 flex flex-col">
-            <div className="text-center mb-12">
-              <div className="w-24 h-24 bg-emerald-900/30 text-emerald-500 rounded-[32px] flex items-center justify-center text-5xl mx-auto mb-6">👷‍♂️</div>
-              <h3 className="text-4xl font-black uppercase leading-tight">Registrar Execução</h3>
-              <p className="text-emerald-500 text-lg font-black uppercase tracking-widest mt-4">{completingTask.titulo}</p>
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-0 md:p-6 bg-slate-950/95 backdrop-blur-xl">
+          <div className="bg-slate-900 w-full h-full md:h-auto md:max-w-4xl md:max-h-[90vh] md:rounded-[48px] p-6 md:p-12 border-0 md:border border-slate-800 shadow-2xl animate-in slide-in-from-bottom-10 flex flex-col overflow-hidden">
+            
+            {/* CABEÇALHO DO MODAL */}
+            <div className="flex justify-between items-start mb-8 shrink-0">
+              <div className="flex items-center gap-6">
+                <div className="w-16 h-16 bg-emerald-900/30 text-emerald-500 rounded-2xl flex items-center justify-center text-3xl">👷‍♂️</div>
+                <div>
+                  <h3 className="text-2xl md:text-4xl font-black uppercase leading-tight">Executar Tarefa</h3>
+                  <p className="text-emerald-500 text-sm md:text-lg font-black uppercase tracking-widest mt-1">{completingTask.titulo}</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => { setCompletingTask(null); setExecutor(''); setNotes(''); }}
+                className="w-10 h-10 bg-slate-800 text-slate-400 rounded-full flex items-center justify-center text-xl hover:bg-rose-600 hover:text-white transition-all"
+              >
+                ✕
+              </button>
             </div>
 
-            <div className="space-y-10 flex-1">
-              <div>
-                <label className="block text-xs font-black text-slate-500 uppercase mb-4 ml-2 tracking-widest">Seu Nome (Executor) *</label>
-                <input 
-                  autoFocus 
-                  className="w-full p-8 bg-slate-950 border-2 border-slate-800 rounded-[32px] font-black text-2xl uppercase outline-none focus:border-emerald-500 text-white transition-all" 
-                  value={executor} 
-                  onChange={e => setExecutor(e.target.value)} 
-                  placeholder="DIGITE SEU NOME" 
-                />
-              </div>
+            {/* CONTEÚDO SCROLLÁVEL */}
+            <div className="flex-1 overflow-y-auto custom-scrollbar dark-scrollbar pr-2 space-y-8">
               
-              <div>
-                <label className="block text-xs font-black text-slate-500 uppercase mb-4 ml-2 tracking-widest">Observações de Campo</label>
-                <textarea 
-                  className="w-full p-8 bg-slate-950 border-2 border-slate-800 rounded-[32px] font-medium text-xl outline-none focus:border-emerald-500 text-white resize-none transition-all" 
-                  rows={4} 
-                  value={notes} 
-                  onChange={e => setNotes(e.target.value)} 
-                  placeholder="Relate aqui qualquer detalhe importante..." 
-                />
+              {/* ORIENTAÇÃO DETALHADA */}
+              <div className="bg-slate-950 p-8 rounded-[32px] border border-slate-800">
+                <div className="flex items-center gap-3 mb-4">
+                  <span className="text-emerald-500 text-xl">📋</span>
+                  <h4 className="text-xs font-black text-slate-500 uppercase tracking-[0.2em]">Instruções e Orientação</h4>
+                </div>
+                <p className="text-xl md:text-2xl font-medium text-slate-200 leading-relaxed whitespace-pre-wrap">
+                  {completingTask.procedimento || "Nenhuma instrução específica fornecida para esta tarefa."}
+                </p>
+                
+                <div className="mt-8 pt-8 border-t border-slate-800/50 flex flex-wrap gap-6">
+                  <div className="flex items-center gap-3">
+                    <span className="text-slate-500 text-sm font-black uppercase tracking-widest">Horário:</span>
+                    <span className="text-white font-black text-lg">{completingTask.horaPlanejada}h</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-slate-500 text-sm font-black uppercase tracking-widest">Grupo:</span>
+                    <span className="text-white font-black text-lg">{completingTask.grupoId || 'Geral'}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* FORMULÁRIO DE REGISTRO */}
+              <div className="space-y-8">
+                <div>
+                  <label className="block text-xs font-black text-slate-500 uppercase mb-4 ml-2 tracking-widest">Seu Nome (Executor) *</label>
+                  <input 
+                    autoFocus 
+                    className="w-full p-6 md:p-8 bg-slate-950 border-2 border-slate-800 rounded-[24px] md:rounded-[32px] font-black text-xl md:text-2xl uppercase outline-none focus:border-emerald-500 text-white transition-all" 
+                    value={executor} 
+                    onChange={e => setExecutor(e.target.value)} 
+                    placeholder="DIGITE SEU NOME" 
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-xs font-black text-slate-500 uppercase mb-4 ml-2 tracking-widest">Observações de Campo</label>
+                  <textarea 
+                    className="w-full p-6 md:p-8 bg-slate-950 border-2 border-slate-800 rounded-[24px] md:rounded-[32px] font-medium text-lg md:text-xl outline-none focus:border-emerald-500 text-white resize-none transition-all" 
+                    rows={4} 
+                    value={notes} 
+                    onChange={e => setNotes(e.target.value)} 
+                    placeholder="Relate aqui qualquer detalhe importante ocorrido durante a execução..." 
+                  />
+                </div>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-6 mt-12">
+            {/* BOTÕES DE AÇÃO */}
+            <div className="grid grid-cols-2 gap-4 md:gap-6 mt-8 shrink-0">
               <button 
                 onClick={() => { setCompletingTask(null); setExecutor(''); setNotes(''); }} 
-                className="py-8 text-slate-500 font-black uppercase text-lg tracking-widest hover:text-white transition-all"
+                className="py-4 md:py-5 text-slate-500 font-black uppercase text-xs md:text-sm tracking-widest hover:text-white transition-all bg-slate-800/50 rounded-2xl md:rounded-3xl"
               >
-                Cancelar
+                Voltar
               </button>
               <button 
                 onClick={handleComplete} 
                 disabled={!executor.trim()} 
-                className="py-8 bg-emerald-600 text-white rounded-[32px] font-black uppercase text-lg tracking-widest shadow-2xl shadow-emerald-900/40 disabled:opacity-20 transition-all active:scale-95"
+                className="py-4 md:py-5 bg-emerald-600 text-white rounded-2xl md:rounded-3xl font-black uppercase text-xs md:text-sm tracking-widest shadow-2xl shadow-emerald-900/40 disabled:opacity-20 transition-all active:scale-95"
               >
-                Confirmar
+                Concluir Tarefa
               </button>
             </div>
           </div>

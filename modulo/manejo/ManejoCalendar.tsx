@@ -190,7 +190,12 @@ const ManejoCalendar: React.FC<ManejoCalendarProps> = ({ manejos, onEdit, onDele
                       {t.status === StatusManejo.CONCLUIDO ? '✓' : t.date < today ? '⚠️' : '📋'}
                    </div>
                    <div className="flex-1 min-w-0">
-                      <p className="font-black text-xs uppercase text-slate-800 truncate">{t.titulo}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="font-black text-xs uppercase text-slate-800 truncate">{t.titulo}</p>
+                        {t.status === StatusManejo.CONCLUIDO && t.observacoes && (
+                          <span className="w-2 h-2 bg-amber-500 rounded-full animate-pulse" title="Observação do Operador"></span>
+                        )}
+                      </div>
                       <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter mt-0.5">
                          {t.isProj ? '📌 Projeção Automática' : `🕒 ${t.horaPlanejada || '08:00'}h`}
                       </p>

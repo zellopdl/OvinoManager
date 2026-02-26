@@ -217,7 +217,12 @@ const ManejoManager: React.FC<ManejoManagerProps> = ({ sheep, paddocks, groups, 
         </div>
         <div className="flex justify-between items-center">
           <div className="flex-1 cursor-pointer" onClick={() => isDone ? setViewingTask(task) : setCompletingTask(task)}>
-            <h4 className={`font-black uppercase text-xs ${isDone ? 'text-emerald-800' : 'text-slate-800'}`}>{task.titulo}</h4>
+            <div className="flex items-center gap-2">
+              <h4 className={`font-black uppercase text-xs ${isDone ? 'text-emerald-800' : 'text-slate-800'}`}>{task.titulo}</h4>
+              {isDone && task.observacoes && (
+                <span className="w-2 h-2 bg-amber-500 rounded-full animate-pulse" title="Observação do Operador"></span>
+              )}
+            </div>
             <p className={`text-[9px] font-bold uppercase mt-0.5 ${isUrgent ? 'text-rose-500' : 'text-slate-400'}`}>{isDone ? `Por: ${task.colaborador}` : isUrgent ? `Desde: ${formatBrazilianDate(task.dataPlanejada)}` : `Hoje às ${task.horaPlanejada}h`}</p>
           </div>
           {!isDone ? (
