@@ -6,6 +6,7 @@ import {
   BarChart, Bar, AreaChart, Area, ScatterChart, Scatter, ReferenceLine
 } from 'recharts';
 import { Sheep, Breed, Group, Status, Sanidade, Sexo } from '../../types';
+import { calculateAge } from '../../utils';
 
 interface ChartsViewProps {
   sheep: Sheep[];
@@ -53,7 +54,8 @@ const ChartsView: React.FC<ChartsViewProps> = ({ sheep, groups }) => {
         gmd: gmd > 0 ? Number((gmd * 1000).toFixed(0)) : 0,
         ecc: s.ecc,
         isBreeding: isBreeding,
-        grupoNome: groups.find(g => g.id === s.grupoId)?.nome || 'Sem Lote'
+        grupoNome: groups.find(g => g.id === s.grupoId)?.nome || 'Sem Lote',
+        nascimento: s.nascimento
       };
     }).filter(d => d.idadeDias >= 0);
   }, [sheep, groups]);
@@ -163,7 +165,7 @@ const ChartsView: React.FC<ChartsViewProps> = ({ sheep, groups }) => {
                               </p>
                               <p className="text-[10px] font-bold text-slate-500 flex justify-between gap-4">
                                 <span>IDADE:</span>
-                                <span>{data.idadeDias} dias</span>
+                                <span className="text-right">{calculateAge(data.nascimento)}</span>
                               </p>
                               <p className="text-[10px] font-black text-emerald-600 flex justify-between gap-4 border-t border-slate-50 pt-1 mt-1">
                                 <span>GMD MÉDIO:</span>
@@ -224,7 +226,7 @@ const ChartsView: React.FC<ChartsViewProps> = ({ sheep, groups }) => {
                               </p>
                               <p className="text-[10px] font-bold text-slate-500 flex justify-between gap-4">
                                 <span>IDADE:</span>
-                                <span>{data.idadeDias} dias</span>
+                                <span className="text-right">{calculateAge(data.nascimento)}</span>
                               </p>
                               <p className="text-[10px] font-bold text-amber-600 flex justify-between gap-4 border-t border-slate-50 pt-1 mt-1">
                                 <span>ECC:</span>
@@ -274,7 +276,7 @@ const ChartsView: React.FC<ChartsViewProps> = ({ sheep, groups }) => {
                               </p>
                               <p className="text-[10px] font-bold text-slate-500 flex justify-between gap-4">
                                 <span>IDADE:</span>
-                                <span>{data.idadeDias} dias</span>
+                                <span className="text-right">{calculateAge(data.nascimento)}</span>
                               </p>
                               <p className="text-[10px] font-bold text-indigo-600 flex justify-between gap-4 border-t border-slate-50 pt-1 mt-1">
                                 <span>GMD:</span>

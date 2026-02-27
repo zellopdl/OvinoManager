@@ -25,9 +25,13 @@ export const calculateAge = (birthDateStr: string): string => {
   const parts = [];
   if (years > 0) parts.push(`${years} ${years === 1 ? 'ano' : 'anos'}`);
   if (months > 0) parts.push(`${months} ${months === 1 ? 'mês' : 'meses'}`);
+  if (days > 0) parts.push(`${days} ${days === 1 ? 'dia' : 'dias'}`);
   
-  if (parts.length === 0) return "Menos de 1 mês";
-  return parts.join(' e ');
+  if (parts.length === 0) return "Recém-nascido";
+  
+  if (parts.length === 1) return parts[0];
+  const last = parts.pop();
+  return `${parts.join(', ')} e ${last}`;
 };
 
 /**
