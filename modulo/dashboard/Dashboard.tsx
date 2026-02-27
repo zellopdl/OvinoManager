@@ -1,9 +1,10 @@
 
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { Sheep, Breed, Group, Status, BreedingPlan, Paddock } from '../../types';
+import { Sheep, Breed, Group, Status, BreedingPlan, Paddock, RadarAnalise } from '../../types';
 import { getHerdDailyInsights } from './geminiService';
 import { entityService } from '../cadastros/entityService';
+import { radarService } from '../analises/radarService';
 
 interface DashboardProps {
   sheep: Sheep[];
@@ -27,9 +28,24 @@ interface AIInsight {
 
 const Dashboard: React.FC<DashboardProps> = ({ sheep, breeds, groups, paddocks = [], plans = [], onRefresh }) => {
   const [aiInsights, setAiInsights] = useState<AIInsight[]>([]);
+  const [savedAnalyses, setSavedAnalyses] = useState<RadarAnalise[]>([]);
   const [loadingInsights, setLoadingInsights] = useState(false);
+  const [loadingBank, setLoadingBank] = useState(false);
   const [isReady, setIsReady] = useState(false);
   const [selectedInsight, setSelectedInsight] = useState<AIInsight | null>(null);
+  const [selectedSaved, setSelectedSaved] = useState<RadarAnalise | null>(null);
+
+  const loadBank = useCallback(async () => {
+    setLoadingBank(true);
+    try {
+      const data = await radarService.getAll();
+      setSavedAnalyses(data);
+    } catch (e) {
+      console.error("Erro ao carregar banco de análises:", e);
+    } finally {
+      setLoadingBank(false);
+    }
+  }, []);
 
   const fetchInsights = useCallback(async () => {
     if (sheep.length === 0) return;
@@ -68,7 +84,38 @@ const Dashboard: React.FC<DashboardProps> = ({ sheep, breeds, groups, paddocks =
 
   useEffect(() => { 
     fetchInsights(); 
-  }, [fetchInsights]);
+    loadBank();
+  }, [fetchInsights, loadBank]);
+
+  const handleSaveToBank = async (insight: AIInsight) => {
+    try {
+      await radarService.save({
+        titulo: insight.titulo,
+        descricao: insight.descricao,
+        fundamentacao: insight.fundamentacao,
+        prioridade: insight.prioridade,
+        categoria: insight.categoria,
+        alvos: insight.alvos,
+        fonte: insight.fonte
+      });
+      setSelectedInsight(null);
+      await loadBank();
+      alert("Análise salva no banco estratégico!");
+    } catch (e) {
+      alert("Erro ao salvar análise.");
+    }
+  };
+
+  const handleDeleteSaved = async (id: string) => {
+    if (!confirm("Deseja remover esta análise do banco?")) return;
+    try {
+      await radarService.delete(id);
+      setSelectedSaved(null);
+      await loadBank();
+    } catch (e) {
+      alert("Erro ao excluir análise.");
+    }
+  };
 
   const stats = useMemo(() => ({
     total: sheep.length,
@@ -174,8 +221,62 @@ const Dashboard: React.FC<DashboardProps> = ({ sheep, breeds, groups, paddocks =
                 }`}>{insight.categoria}</span>
                 <h4 className="font-black text-slate-800 text-xs uppercase mb-2 group-hover:text-indigo-600 leading-tight">{insight.titulo}</h4>
                 <p className="text-slate-500 text-[10px] font-medium line-clamp-2 italic">{insight.descricao}</p>
-                <div className="mt-3 flex flex-wrap gap-1">
-                   {insight.alvos?.slice(0,2).map(a => <span key={a} className="bg-white/60 px-2 py-0.5 rounded text-[7px] font-black text-slate-600 border border-black/5 uppercase">{a}</span>)}
+                <div className="mt-3 flex justify-between items-center">
+                   <div className="flex flex-wrap gap-1">
+                      {insight.alvos?.slice(0,2).map(a => <span key={a} className="bg-white/60 px-2 py-0.5 rounded text-[7px] font-black text-slate-600 border border-black/5 uppercase">{a}</span>)}
+                   </div>
+                   <span className="text-[10px] opacity-0 group-hover:opacity-100 transition-opacity">Ver Detalhes →</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* BANCO DE ANÁLISES ESTRATÉGICAS */}
+      <section className="bg-slate-900 p-8 rounded-[48px] border border-slate-800 shadow-2xl">
+        <div className="flex justify-between items-center mb-8">
+          <div>
+            <h3 className="text-xl font-black text-white flex items-center gap-3 uppercase tracking-tight">
+              <span className="bg-emerald-500 text-white p-2 rounded-xl text-sm">📁</span> Banco de Análises Estratégicas
+            </h3>
+            <p className="text-slate-500 font-bold text-[10px] uppercase mt-1">Histórico de decisões e melhorias do rebanho</p>
+          </div>
+          <span className="bg-slate-800 text-slate-400 px-4 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest">
+            {savedAnalyses.length} Registros
+          </span>
+        </div>
+
+        {loadingBank ? (
+          <div className="py-12 flex justify-center">
+            <div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+          </div>
+        ) : savedAnalyses.length === 0 ? (
+          <div className="py-16 text-center bg-slate-950/30 rounded-[32px] border border-slate-800 border-dashed">
+            <p className="text-slate-600 font-black uppercase tracking-widest text-xs">Nenhuma análise salva no banco estratégico</p>
+            <p className="text-slate-700 text-[10px] mt-2">Salve insights do Radar IA para gerenciar melhorias</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {savedAnalyses.map(analise => (
+              <div 
+                key={analise.id} 
+                onClick={() => setSelectedSaved(analise)}
+                className="p-6 bg-slate-950/50 border border-slate-800 rounded-[32px] hover:border-emerald-500/50 transition-all cursor-pointer group relative overflow-hidden"
+              >
+                <div className="flex justify-between items-start mb-4">
+                  <span className={`px-3 py-1 rounded-full text-[8px] font-black uppercase ${
+                    analise.prioridade === 'alta' ? 'bg-rose-500/20 text-rose-500' : analise.prioridade === 'media' ? 'bg-amber-500/20 text-amber-500' : 'bg-emerald-500/20 text-emerald-500'
+                  }`}>{analise.categoria}</span>
+                  <span className="text-[8px] font-black text-slate-600 uppercase">{new Date(analise.created_at!).toLocaleDateString('pt-BR')}</span>
+                </div>
+                <h4 className="font-black text-slate-200 text-xs uppercase mb-2 leading-tight group-hover:text-emerald-400">{analise.titulo}</h4>
+                <p className="text-slate-500 text-[10px] font-medium line-clamp-2 italic mb-4">{analise.descricao}</p>
+                <div className="flex justify-between items-center">
+                  <div className="flex gap-1">
+                    {analise.alvos?.slice(0,2).map(a => <span key={a} className="bg-slate-900 px-2 py-0.5 rounded text-[7px] font-black text-slate-500 border border-slate-800 uppercase">{a}</span>)}
+                  </div>
+                  <div className="w-8 h-8 bg-slate-900 rounded-xl flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-all">👁️</div>
                 </div>
               </div>
             ))}
@@ -201,7 +302,7 @@ const Dashboard: React.FC<DashboardProps> = ({ sheep, breeds, groups, paddocks =
         ))}
       </div>
       
-      {/* MODAL INSIGHT */}
+      {/* MODAL INSIGHT (TEMPORÁRIO) */}
       {selectedInsight && (
         <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-md">
           <div className="bg-white w-full max-w-2xl rounded-[40px] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
@@ -216,8 +317,46 @@ const Dashboard: React.FC<DashboardProps> = ({ sheep, breeds, groups, paddocks =
               {selectedInsight.fundamentacao}
             </div>
             <div className="p-6 bg-slate-50 border-t flex justify-between items-center">
-              <span className="text-[10px] font-black text-slate-400 uppercase italic">Fonte: Inteligência Veterinária {selectedInsight.fonte}</span>
-              <button onClick={() => setSelectedInsight(null)} className="px-10 py-4 bg-slate-900 text-white rounded-2xl font-black uppercase text-xs shadow-lg">Fechar</button>
+              <button onClick={() => handleSaveToBank(selectedInsight)} className="px-8 py-4 bg-emerald-600 text-white rounded-2xl font-black uppercase text-xs shadow-lg shadow-emerald-100 flex items-center gap-2">
+                <span>📁</span> Salvar no Banco Estratégico
+              </button>
+              <button onClick={() => setSelectedInsight(null)} className="px-8 py-4 bg-slate-200 text-slate-600 rounded-2xl font-black uppercase text-xs">Descartar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL ANÁLISE SALVA (BANCO) */}
+      {selectedSaved && (
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-xl">
+          <div className="bg-slate-900 w-full max-w-2xl rounded-[48px] shadow-2xl overflow-hidden border border-slate-800 animate-in zoom-in-95 duration-300">
+            <div className={`p-10 border-b border-slate-800 ${selectedSaved.prioridade === 'alta' ? 'bg-rose-900/10' : 'bg-emerald-900/10'} flex justify-between items-start`}>
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 block">{selectedSaved.categoria} • SALVO EM {new Date(selectedSaved.created_at!).toLocaleDateString('pt-BR')}</span>
+                <h2 className="text-3xl font-black uppercase text-white leading-tight">{selectedSaved.titulo}</h2>
+              </div>
+              <button onClick={() => setSelectedSaved(null)} className="w-12 h-12 bg-slate-800 border border-slate-700 rounded-full flex items-center justify-center text-slate-400 hover:text-white shadow-sm transition-all">✕</button>
+            </div>
+            <div className="p-10 max-h-[50vh] overflow-y-auto custom-scrollbar text-slate-300 leading-relaxed text-base whitespace-pre-wrap font-medium">
+              {selectedSaved.fundamentacao}
+              
+              <div className="mt-8 pt-8 border-t border-slate-800">
+                <h4 className="text-[10px] font-black text-slate-500 uppercase mb-4">Animais Alvos da Estratégia</h4>
+                <div className="flex flex-wrap gap-2">
+                  {selectedSaved.alvos?.map(a => (
+                    <span key={a} className="bg-slate-800 px-4 py-2 rounded-xl text-xs font-black text-slate-300 border border-slate-700 uppercase">{a}</span>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div className="p-8 bg-slate-950 border-t border-slate-800 flex justify-between items-center">
+              <button 
+                onClick={() => handleDeleteSaved(selectedSaved.id)} 
+                className="px-10 py-5 bg-emerald-600 text-white rounded-[24px] font-black uppercase text-xs shadow-2xl shadow-emerald-900/20 flex items-center gap-3 active:scale-95 transition-all"
+              >
+                <span>✅</span> Implementado / Resolver
+              </button>
+              <button onClick={() => setSelectedSaved(null)} className="px-10 py-5 bg-slate-800 text-slate-400 rounded-[24px] font-black uppercase text-xs">Manter no Banco</button>
             </div>
           </div>
         </div>

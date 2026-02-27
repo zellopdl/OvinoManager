@@ -189,3 +189,16 @@ export interface DashboardStats {
   femeas: number;
   mediaPeso: number;
 }
+
+export interface RadarAnalise {
+  id: string;
+  titulo: string;
+  descricao: string;
+  fundamentacao: string;
+  prioridade: 'alta' | 'media' | 'baixa';
+  categoria: string;
+  alvos: string[];
+  fonte: string;
+  status: 'pendente' | 'executado';
+  created_at?: string;
+}
