@@ -44,15 +44,18 @@ const ChartsView: React.FC<ChartsViewProps> = ({ sheep, groups }) => {
         gmd = (s.peso - 4) / ageInDays;
       }
 
+      const isBreeding = s.sexo === Sexo.FEMEA && ageInDays > 210 || s.prenha || groups.find(g => g.id === s.grupoId)?.nome === 'EM MONTA';
+
       return { 
         nome: s.nome, 
         idadeDias: ageInDays, 
         peso: s.peso,
         gmd: gmd > 0 ? Number((gmd * 1000).toFixed(0)) : 0,
         ecc: s.ecc,
-        isBreeding: s.prenha || groups.find(g => g.id === s.grupoId)?.nome === 'EM MONTA'
+        isBreeding: isBreeding,
+        grupoNome: groups.find(g => g.id === s.grupoId)?.nome || 'Sem Lote'
       };
-    }).filter(d => d.idadeDias >= 0 && d.idadeDias < 365);
+    }).filter(d => d.idadeDias >= 0);
   }, [sheep, groups]);
 
   const breedingScatterData = useMemo(() => {
@@ -60,8 +63,13 @@ const ChartsView: React.FC<ChartsViewProps> = ({ sheep, groups }) => {
   }, [growthScatterData]);
 
   const fatteningScatterData = useMemo(() => {
-    return growthScatterData.filter(d => !d.isBreeding);
+    return growthScatterData.filter(d => !d.isBreeding && d.idadeDias < 365);
   }, [growthScatterData]);
+
+  const fatteningGroupNames = useMemo(() => {
+    const names = Array.from(new Set(fatteningScatterData.map(d => d.grupoNome)));
+    return names.length > 0 ? names.join(', ') : 'Sem Lote';
+  }, [fatteningScatterData]);
 
   // Dados Avançados para Distribuição por Grupo (COM DIVISÃO POR SEXO)
   const activeByGroupData = useMemo(() => {
@@ -123,9 +131,12 @@ const ChartsView: React.FC<ChartsViewProps> = ({ sheep, groups }) => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           <div className="lg:col-span-2 bg-white p-6 md:p-8 rounded-[40px] border shadow-sm flex flex-col h-[400px] md:h-[450px]">
             <div className="flex justify-between items-center mb-6">
-              <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-ping"></span> Curva de Engorda vs Meta
-              </h3>
+              <div className="flex flex-col">
+                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-ping"></span> Curva de Engorda vs Meta
+                </h3>
+                <p className="text-[8px] font-black text-indigo-600 uppercase mt-1">Lotes: {fatteningGroupNames}</p>
+              </div>
               <div className="flex flex-col items-end gap-1">
                 <span className="px-3 py-1 bg-rose-50 text-rose-600 rounded-full text-[9px] font-black uppercase border border-rose-100">Alvo: 42kg</span>
                 <span className="text-[8px] font-black text-emerald-600 uppercase">Inclui GMD (g/dia)</span>
