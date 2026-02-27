@@ -117,13 +117,17 @@ const Dashboard: React.FC<DashboardProps> = ({ sheep, breeds, groups, paddocks =
     }
   };
 
-  const stats = useMemo(() => ({
-    total: sheep.length,
-    ativos: sheep.filter(s => s.status === Status.ATIVO).length,
-    machos: sheep.filter(s => s.sexo === 'macho').length,
-    femeas: sheep.filter(s => s.sexo === 'femea').length,
-    mediaPeso: sheep.length > 0 ? sheep.reduce((acc, curr) => acc + curr.peso, 0) / sheep.length : 0,
-  }), [sheep]);
+  const stats = useMemo(() => {
+    const activeSheep = sheep.filter(s => s.status === Status.ATIVO);
+    return {
+      total: sheep.length,
+      ativos: activeSheep.length,
+      machos: activeSheep.filter(s => s.sexo === 'macho').length,
+      femeas: activeSheep.filter(s => s.sexo === 'femea').length,
+      semSexo: activeSheep.filter(s => s.sexo !== 'macho' && s.sexo !== 'femea').length,
+      mediaPeso: activeSheep.length > 0 ? activeSheep.reduce((acc, curr) => acc + curr.peso, 0) / activeSheep.length : 0,
+    };
+  }, [sheep]);
 
   // Alertas Reprodutivos (Lógica de 17 dias)
   const breedingAlerts = useMemo(() => {
@@ -285,17 +289,19 @@ const Dashboard: React.FC<DashboardProps> = ({ sheep, breeds, groups, paddocks =
       </section>
 
       {/* STATS RÁPIDOS */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
         {[
+          {l:'Total Rebanho', v:stats.total, i:'🐑', c:'text-slate-600', bg:'bg-slate-50'},
           {l:'Ativos', v:stats.ativos, i:'✅', c:'text-emerald-600', bg:'bg-emerald-50'},
-          {l:'Peso Médio', v:`${stats.mediaPeso.toFixed(1)}kg`, i:'⚖️', c:'text-blue-600', bg:'bg-blue-50'},
           {l:'Machos', v:stats.machos, i:'🧬', c:'text-indigo-600', bg:'bg-indigo-50'},
-          {l:'Fêmeas', v:stats.femeas, i:'🎀', c:'text-pink-600', bg:'bg-pink-50'}
+          {l:'Fêmeas', v:stats.femeas, i:'🎀', c:'text-pink-600', bg:'bg-pink-50'},
+          ...(stats.semSexo > 0 ? [{l:'Não Definido', v:stats.semSexo, i:'❓', c:'text-amber-600', bg:'bg-amber-50'}] : []),
+          {l:'Peso Médio', v:`${stats.mediaPeso.toFixed(1)}kg`, i:'⚖️', c:'text-blue-600', bg:'bg-blue-50'},
         ].map(s => (
-          <div key={s.l} className={`p-5 rounded-3xl border shadow-sm ${s.bg} border-white/50`}>
+          <div key={s.l} className={`p-5 rounded-3xl border shadow-sm ${s.bg} border-white/50 transition-all hover:shadow-md`}>
             <p className="text-[10px] font-black text-slate-400 uppercase mb-2">{s.l}</p>
             <div className="flex justify-between items-end">
-              <h3 className="text-2xl font-black text-slate-800">{s.v}</h3>
+              <h3 className={`text-2xl font-black ${s.c}`}>{s.v}</h3>
               <span className="text-xl opacity-30">{s.i}</span>
             </div>
           </div>
