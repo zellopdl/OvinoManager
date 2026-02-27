@@ -214,9 +214,9 @@ const App: React.FC = () => {
       case 'charts': return <ChartsView sheep={safeSheep} breeds={breeds} groups={groups} />;
       case 'guia': return <KnowledgeAssistant />;
       case 'manejo': return <ManejoManager sheep={safeSheep} paddocks={paddocks} groups={groups} onRefreshSheep={loadInitialData} managerPassword={managerPassword} />;
-      case 'weight': return <WeightManager sheep={safeSheep} groups={groups} onRefresh={loadInitialData} />;
-      case 'ecc': return <ECCManager sheep={safeSheep} groups={groups} onRefresh={loadInitialData} />;
-      case 'famacha': return <FamachaManager sheep={safeSheep} groups={groups} onRefresh={loadInitialData} />;
+      case 'weight': return <WeightManager sheep={safeSheep} groups={groups} paddocks={paddocks} onRefresh={loadInitialData} />;
+      case 'ecc': return <ECCManager sheep={safeSheep} groups={groups} paddocks={paddocks} onRefresh={loadInitialData} />;
+      case 'famacha': return <FamachaManager sheep={safeSheep} groups={groups} paddocks={paddocks} onRefresh={loadInitialData} />;
       case 'repro': return <ReproductionManager sheep={safeSheep} groups={groups} onRefresh={loadInitialData} managerPassword={managerPassword} />;
       case 'sheep':
         return view === 'list' ? (

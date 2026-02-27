@@ -115,6 +115,29 @@ CREATE TABLE IF NOT EXISTS public.historico_peso (
   data TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
 
+CREATE TABLE IF NOT EXISTS public.historico_ecc (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  ovelha_id UUID REFERENCES public.ovelhas(id) ON DELETE CASCADE,
+  ecc NUMERIC NOT NULL,
+  data TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.historico_famacha (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  ovelha_id UUID REFERENCES public.ovelhas(id) ON DELETE CASCADE,
+  famacha INTEGER NOT NULL,
+  data TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
+
+-- Habilitar RLS e criar políticas para as tabelas de histórico
+ALTER TABLE public.historico_peso ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.historico_ecc ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.historico_famacha ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Acesso total historico_peso" ON public.historico_peso FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Acesso total historico_ecc" ON public.historico_ecc FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Acesso total historico_famacha" ON public.historico_famacha FOR ALL USING (true) WITH CHECK (true);
+
 -- 4. Estações de Monta (Lotes)
 CREATE TABLE IF NOT EXISTS public.lotes_monta (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

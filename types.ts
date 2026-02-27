@@ -129,6 +129,20 @@ export interface WeightHistory {
   data: string;
 }
 
+export interface ECCHistory {
+  id: string;
+  ovelha_id: string;
+  ecc: number;
+  data: string;
+}
+
+export interface FamachaHistory {
+  id: string;
+  ovelha_id: string;
+  famacha: number;
+  data: string;
+}
+
 export interface Sheep {
   id: string;
   brinco: string;
@@ -151,6 +165,8 @@ export interface Sheep {
   obs?: string;
   createdAt: string;
   historicoPeso?: WeightHistory[];
+  historicoECC?: ECCHistory[];
+  historicoFamacha?: FamachaHistory[];
 }
 
 export interface Manejo {

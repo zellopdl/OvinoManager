@@ -4,14 +4,30 @@ import { Sheep, Sanidade, Status } from '../../types';
 
 const LOCAL_STORAGE_KEY = 'ovimanager_sheep_data';
 const WEIGHT_STORAGE_KEY = 'ovimanager_weight_history';
+const ECC_STORAGE_KEY = 'ovimanager_ecc_history';
+const FAMACHA_STORAGE_KEY = 'ovimanager_famacha_history';
 
 const getLocalData = (): Sheep[] => {
   const data = localStorage.getItem(LOCAL_STORAGE_KEY);
-  return data ? JSON.parse(data) : [];
+  const sheep = data ? JSON.parse(data) : [];
+  
+  // Vincular históricos locais
+  const weights = JSON.parse(localStorage.getItem(WEIGHT_STORAGE_KEY) || '[]');
+  const eccs = JSON.parse(localStorage.getItem(ECC_STORAGE_KEY) || '[]');
+  const famachas = JSON.parse(localStorage.getItem(FAMACHA_STORAGE_KEY) || '[]');
+
+  return sheep.map((s: Sheep) => ({
+    ...s,
+    historicoPeso: weights.filter((w: any) => w.ovelha_id === s.id),
+    historicoECC: eccs.filter((e: any) => e.ovelha_id === s.id),
+    historicoFamacha: famachas.filter((f: any) => f.ovelha_id === s.id)
+  }));
 };
 
 const saveLocalData = (data: Sheep[]) => {
-  localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(data));
+  // Remove os históricos antes de salvar para não duplicar no JSON principal
+  const cleanData = data.map(({ historicoPeso, historicoECC, historicoFamacha, ...rest }) => rest);
+  localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(cleanData));
 };
 
 const saveLocalWeight = (ovelhaId: string, peso: number, date?: string) => {
@@ -23,6 +39,28 @@ const saveLocalWeight = (ovelhaId: string, peso: number, date?: string) => {
     data: date || new Date().toISOString()
   });
   localStorage.setItem(WEIGHT_STORAGE_KEY, JSON.stringify(history));
+};
+
+const saveLocalECC = (ovelhaId: string, ecc: number, date?: string) => {
+  const history = JSON.parse(localStorage.getItem(ECC_STORAGE_KEY) || '[]');
+  history.push({
+    id: crypto.randomUUID(),
+    ovelha_id: ovelhaId,
+    ecc: ecc,
+    data: date || new Date().toISOString()
+  });
+  localStorage.setItem(ECC_STORAGE_KEY, JSON.stringify(history));
+};
+
+const saveLocalFamacha = (ovelhaId: string, famacha: number, date?: string) => {
+  const history = JSON.parse(localStorage.getItem(FAMACHA_STORAGE_KEY) || '[]');
+  history.push({
+    id: crypto.randomUUID(),
+    ovelha_id: ovelhaId,
+    famacha: famacha,
+    data: date || new Date().toISOString()
+  });
+  localStorage.setItem(FAMACHA_STORAGE_KEY, JSON.stringify(history));
 };
 
 const mapToDb = (sheep: Partial<Sheep>) => {
@@ -53,7 +91,11 @@ export const sheepService = {
     if (isSupabaseConfigured) {
       const { data, error } = await supabase
         .from('ovelhas')
-        .select(`*, historico_peso (id, peso, data)`)
+        .select(`*, 
+          historico_peso (id, peso, data),
+          historico_ecc (id, ecc, data),
+          historico_famacha (id, famacha, data)
+        `)
         .order('created_at', { ascending: false });
       if (error) throw error;
       return (data || []).map((item: any) => ({
@@ -77,7 +119,9 @@ export const sheepService = {
         mae: item.mae,
         obs: item.obs,
         createdAt: item.created_at,
-        historicoPeso: item.historico_peso
+        historicoPeso: item.historico_peso,
+        historicoECC: item.historico_ecc,
+        historicoFamacha: item.historico_famacha
       })) as Sheep[];
     }
     return getLocalData();
@@ -110,22 +154,59 @@ export const sheepService = {
       const payload = mapToDb(sheep);
       const { data, error } = await supabase.from('ovelhas').update(payload).eq('id', id).select();
       if (error) throw error;
-      if (sheep.peso !== undefined) {
-        await supabase.from('historico_peso').insert([{
-          ovelha_id: id,
-          peso: Number(sheep.peso),
-          data: historyDate || new Date().toISOString()
-        }]);
+      
+      const historyPromises = [];
+      const timestamp = historyDate || new Date().toISOString();
+      
+      if (sheep.peso !== undefined && !isNaN(Number(sheep.peso))) {
+        historyPromises.push(
+          supabase.from('historico_peso').insert([{
+            ovelha_id: id,
+            peso: Number(sheep.peso),
+            data: timestamp
+          }]).then(({ error }: { error: any }) => { if (error) console.error("Erro historico_peso:", error); })
+        );
       }
+
+      if (sheep.ecc !== undefined && !isNaN(Number(sheep.ecc))) {
+        historyPromises.push(
+          supabase.from('historico_ecc').insert([{
+            ovelha_id: id,
+            ecc: Number(sheep.ecc),
+            data: timestamp
+          }]).then(({ error }: { error: any }) => { if (error) console.error("Erro historico_ecc:", error); })
+        );
+      }
+
+      if (sheep.famacha !== undefined && !isNaN(Number(sheep.famacha))) {
+        historyPromises.push(
+          supabase.from('historico_famacha').insert([{
+            ovelha_id: id,
+            famacha: Number(sheep.famacha),
+            data: timestamp
+          }]).then(({ error }: { error: any }) => { if (error) console.error("Erro historico_famacha:", error); })
+        );
+      }
+
+      if (historyPromises.length > 0) {
+        await Promise.all(historyPromises);
+      }
+      
       return data?.[0];
     }
     const local = getLocalData();
     const index = local.findIndex(s => s.id === id);
     if (index !== -1) {
       const weightChanged = sheep.peso !== undefined && Number(sheep.peso) !== Number(local[index].peso);
+      const eccChanged = sheep.ecc !== undefined && Number(sheep.ecc) !== Number(local[index].ecc);
+      const famachaChanged = sheep.famacha !== undefined && Number(sheep.famacha) !== Number(local[index].famacha);
+
       local[index] = { ...local[index], ...sheep };
       saveLocalData(local);
+      
       if (weightChanged) saveLocalWeight(id, Number(sheep.peso), historyDate);
+      if (eccChanged) saveLocalECC(id, Number(sheep.ecc), historyDate);
+      if (famachaChanged) saveLocalFamacha(id, Number(sheep.famacha), historyDate);
     }
   },
 
