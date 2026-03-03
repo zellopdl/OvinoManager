@@ -1,8 +1,8 @@
 
 import React, { useState, useMemo } from 'react';
-import { Sheep, Breed, Supplier, Group, Paddock, Sanidade } from '../../types';
+import { Sheep, Breed, Supplier, Group, Paddock, Sanidade, Sexo } from '../../types';
 import { calculateAge } from '../../utils';
-import { FAMACHA_OPTIONS, ECC_OPTIONS } from '../../constants';
+import { FAMACHA_OPTIONS, ECC_OPTIONS, SEXO_OPTIONS } from '../../constants';
 
 interface SheepTableProps {
   sheep: Sheep[];
@@ -21,6 +21,9 @@ type SortDirection = 'asc' | 'desc';
 
 const SheepTable: React.FC<SheepTableProps> = ({ sheep, breeds, groups, paddocks, onEdit, onDelete, onAdd, onAnalyze }) => {
   const [search, setSearch] = useState('');
+  const [filterPaddock, setFilterPaddock] = useState('');
+  const [filterGroup, setFilterGroup] = useState('');
+  const [filterSex, setFilterSex] = useState('');
   const [sortField, setSortField] = useState<SortField>('nome');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
 
@@ -37,10 +40,22 @@ const SheepTable: React.FC<SheepTableProps> = ({ sheep, breeds, groups, paddocks
   };
 
   const filteredAndSorted = useMemo(() => {
-    const filtered = sheep.filter(s => 
+    let filtered = sheep.filter(s => 
       s.nome.toLowerCase().includes(search.toLowerCase()) || 
       s.brinco.includes(search)
     );
+
+    if (filterPaddock) {
+      filtered = filtered.filter(s => s.piqueteId === filterPaddock);
+    }
+
+    if (filterGroup) {
+      filtered = filtered.filter(s => s.grupoId === filterGroup);
+    }
+
+    if (filterSex) {
+      filtered = filtered.filter(s => s.sexo === filterSex);
+    }
 
     return filtered.sort((a, b) => {
       let valA: any;
@@ -76,7 +91,7 @@ const SheepTable: React.FC<SheepTableProps> = ({ sheep, breeds, groups, paddocks
       if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
       return 0;
     });
-  }, [sheep, search, sortField, sortDirection, groups, paddocks]);
+  }, [sheep, search, sortField, sortDirection, groups, paddocks, filterPaddock, filterGroup, filterSex]);
 
   const getFamachaColor = (val: number) => {
     if (val <= 2) return 'text-emerald-600 bg-emerald-50 border-emerald-100';
@@ -106,22 +121,77 @@ const SheepTable: React.FC<SheepTableProps> = ({ sheep, breeds, groups, paddocks
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-           <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">🔍</span>
-           <input 
-              className="w-full pl-10 pr-4 py-3.5 bg-white border border-slate-200 rounded-2xl shadow-sm outline-none focus:border-emerald-500 text-sm font-medium" 
-              placeholder="Buscar por nome ou brinco..." 
-              value={search} 
-              onChange={e => setSearch(e.target.value)} 
-           />
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+             <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">🔍</span>
+             <input 
+                className="w-full pl-10 pr-4 py-3.5 bg-white border border-slate-200 rounded-2xl shadow-sm outline-none focus:border-emerald-500 text-sm font-medium" 
+                placeholder="Buscar por nome ou brinco..." 
+                value={search} 
+                onChange={e => setSearch(e.target.value)} 
+             />
+          </div>
+          <button 
+            onClick={onAdd} 
+            className="bg-emerald-600 text-white w-full sm:w-auto px-8 py-3.5 rounded-2xl font-black uppercase text-[11px] shadow-lg shadow-emerald-900/10 active:scale-95 transition-all"
+          >
+            Novo Animal
+          </button>
         </div>
-        <button 
-          onClick={onAdd} 
-          className="bg-emerald-600 text-white w-full sm:w-auto px-8 py-3.5 rounded-2xl font-black uppercase text-[11px] shadow-lg shadow-emerald-900/10 active:scale-95 transition-all"
-        >
-          Novo Animal
-        </button>
+
+        {/* Filtros Discretos */}
+        <div className="flex flex-wrap items-center gap-2 px-1">
+          <div className="flex items-center gap-2">
+            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Filtrar:</span>
+            <select 
+              value={filterPaddock} 
+              onChange={e => setFilterPaddock(e.target.value)}
+              className="bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-[10px] font-bold text-slate-600 outline-none focus:border-emerald-500 transition-all"
+            >
+              <option value="">Todos Piquetes</option>
+              {paddocks.map(p => (
+                <option key={p.id} value={p.id}>{p.piquete}</option>
+              ))}
+            </select>
+
+            <select 
+              value={filterGroup} 
+              onChange={e => setFilterGroup(e.target.value)}
+              className="bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-[10px] font-bold text-slate-600 outline-none focus:border-emerald-500 transition-all"
+            >
+              <option value="">Todos Grupos</option>
+              {groups.map(g => (
+                <option key={g.id} value={g.id}>{g.nome}</option>
+              ))}
+            </select>
+
+            <select 
+              value={filterSex} 
+              onChange={e => setFilterSex(e.target.value)}
+              className="bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-[10px] font-bold text-slate-600 outline-none focus:border-emerald-500 transition-all"
+            >
+              <option value="">Todos Sexos</option>
+              {SEXO_OPTIONS.map(o => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </select>
+
+            {(filterPaddock || filterGroup || filterSex) && (
+              <button 
+                onClick={() => {
+                  setFilterPaddock('');
+                  setFilterGroup('');
+                  setFilterSex('');
+                  setSearch('');
+                }}
+                className="text-[9px] font-black text-rose-500 uppercase hover:text-rose-600 transition-all ml-2"
+              >
+                Limpar Filtros
+              </button>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Desktop Table View */}
