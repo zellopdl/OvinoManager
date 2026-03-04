@@ -32,6 +32,8 @@ const ManejoManager: React.FC<ManejoManagerProps> = ({ sheep, paddocks, groups, 
   const [executor, setExecutor] = useState('');
   const [notes, setNotes] = useState('');
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isAllTasksModalOpen, setIsAllTasksModalOpen] = useState(false);
+  const [taskSearch, setTaskSearch] = useState('');
 
   const [openSections, setOpenSections] = useState({ urgent: true, today: true, done: false });
 
@@ -258,6 +260,7 @@ const ManejoManager: React.FC<ManejoManagerProps> = ({ sheep, paddocks, groups, 
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 rounded-[32px] border border-slate-200 shadow-sm">
         <div><h2 className="text-2xl font-black text-slate-800 uppercase tracking-tight">Painel de Operações</h2><p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mt-1">Gestão Completa e Auditoria de Campo</p></div>
         <div className="flex gap-2">
+          <button onClick={() => setIsAllTasksModalOpen(true)} className="px-6 py-3 bg-slate-100 text-slate-600 rounded-2xl font-black uppercase text-[11px] active:scale-95 transition-all">Listar Tudo</button>
           <button onClick={() => setIsAvisoModalOpen(true)} className="px-6 py-3 bg-slate-100 text-slate-600 rounded-2xl font-black uppercase text-[11px] active:scale-95 transition-all">Mural de Avisos</button>
           <button onClick={() => { setEditingTask(null); setIsFormOpen(true); }} className="px-8 py-3 bg-indigo-600 text-white rounded-2xl font-black uppercase text-[11px] shadow-lg active:scale-95 transition-all">Agendar Manejo</button>
         </div>
@@ -550,6 +553,64 @@ const ManejoManager: React.FC<ManejoManagerProps> = ({ sheep, paddocks, groups, 
                 ))}
                 {avisos.length === 0 && <p className="text-center py-10 text-[10px] font-black text-slate-300 uppercase">Nenhum aviso postado</p>}
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL LISTAR TUDO */}
+      {isAllTasksModalOpen && (
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md">
+          <div className="bg-white w-full max-w-4xl rounded-[40px] p-8 shadow-2xl animate-in zoom-in-95 max-h-[90vh] flex flex-col">
+            <div className="flex justify-between items-center mb-8 shrink-0">
+              <div>
+                <h3 className="text-xl font-black text-slate-800 uppercase">Todos os Agendamentos</h3>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Histórico e Planejamento Completo</p>
+              </div>
+              <button onClick={() => { setIsAllTasksModalOpen(false); setTaskSearch(''); }} className="w-10 h-10 bg-slate-50 rounded-full text-slate-400 flex items-center justify-center">✕</button>
+            </div>
+
+            <div className="mb-6 shrink-0">
+              <input 
+                type="text" 
+                placeholder="PESQUISAR POR TÍTULO OU GRUPO..." 
+                className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl font-black uppercase text-xs outline-none focus:border-indigo-500"
+                value={taskSearch}
+                onChange={e => setTaskSearch(e.target.value)}
+              />
+            </div>
+
+            <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-3">
+              {manejos
+                .filter(t => 
+                  t.titulo.toLowerCase().includes(taskSearch.toLowerCase()) || 
+                  (t.grupoId && t.grupoId.toLowerCase().includes(taskSearch.toLowerCase()))
+                )
+                .sort((a, b) => b.dataPlanejada.localeCompare(a.dataPlanejada))
+                .map(task => (
+                  <div key={task.id} className="p-4 bg-white border border-slate-100 rounded-3xl flex items-center justify-between hover:border-indigo-200 transition-all group">
+                    <div className="flex items-center gap-4">
+                      <div className={`w-10 h-10 rounded-2xl flex items-center justify-center text-lg ${task.status === StatusManejo.CONCLUIDO ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
+                        {task.status === StatusManejo.CONCLUIDO ? '✓' : '⏳'}
+                      </div>
+                      <div>
+                        <h4 className="font-black text-slate-800 text-xs uppercase">{task.titulo}</h4>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-[9px] font-bold text-slate-400 uppercase">📅 {formatBrazilianDate(task.dataPlanejada)}</span>
+                          <span className="text-[9px] font-bold text-slate-400 uppercase">👥 {task.grupoId || 'GERAL'}</span>
+                          {task.status === StatusManejo.CONCLUIDO && (
+                            <span className="text-[8px] font-black text-emerald-500 bg-emerald-50 px-2 py-0.5 rounded uppercase">Concluído</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                       <button onClick={() => { setIsAllTasksModalOpen(false); setAuthModal({ type: 'edit', task }); }} className="w-8 h-8 bg-slate-50 text-slate-400 rounded-lg flex items-center justify-center text-[10px] hover:bg-indigo-50 hover:text-indigo-600">✏️</button>
+                       <button onClick={() => { setIsAllTasksModalOpen(false); setAuthModal({ type: 'delete', task }); }} className="w-8 h-8 bg-slate-50 text-slate-400 rounded-lg flex items-center justify-center text-[10px] hover:bg-rose-50 hover:text-rose-600">🗑️</button>
+                    </div>
+                  </div>
+                ))}
+              {manejos.length === 0 && <p className="text-center py-20 text-[10px] font-black text-slate-300 uppercase">Nenhum agendamento encontrado</p>}
             </div>
           </div>
         </div>
