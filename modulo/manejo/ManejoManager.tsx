@@ -25,7 +25,7 @@ const ManejoManager: React.FC<ManejoManagerProps> = ({ sheep, paddocks, groups, 
   const [isAvisoModalOpen, setIsAvisoModalOpen] = useState(false);
   const [newAviso, setNewAviso] = useState({ titulo: '', conteudo: '', prioridade: 'normal' as any });
   
-  const [authModal, setAuthModal] = useState<{ type: 'edit' | 'delete', task: Manejo } | null>(null);
+  const [authModal, setAuthModal] = useState<{ type: 'edit' | 'delete' | 'revert', task: Manejo } | null>(null);
   const [passInput, setPassInput] = useState('');
   const [passError, setPassError] = useState(false);
 
@@ -106,6 +106,8 @@ const ManejoManager: React.FC<ManejoManagerProps> = ({ sheep, paddocks, groups, 
       const { type, task } = authModal!;
       if (type === 'delete') {
         processDelete(task.id);
+      } else if (type === 'revert') {
+        processRevert(task.id);
       } else {
         setEditingTask(task);
         setFormManejo({
@@ -136,6 +138,10 @@ const ManejoManager: React.FC<ManejoManagerProps> = ({ sheep, paddocks, groups, 
 
   const processDelete = async (id: string) => {
     try { await manejoService.delete(id); await loadData(); } catch (e) { alert("Erro ao excluir."); }
+  };
+
+  const processRevert = async (id: string) => {
+    try { await manejoService.revertTask(id); await loadData(); } catch (e) { alert("Erro ao desfazer."); }
   };
 
   const toggleDay = (day: number) => {
@@ -214,6 +220,15 @@ const ManejoManager: React.FC<ManejoManagerProps> = ({ sheep, paddocks, groups, 
               {isDone && <span className="bg-emerald-600 text-white text-[7px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest">Realizado</span>}
            </div>
            <div className="flex gap-1.5 transition-opacity">
+              {isDone && (
+                <button 
+                  onClick={() => setAuthModal({ type: 'revert', task })} 
+                  className="w-8 h-8 bg-amber-50 text-amber-600 rounded-lg flex items-center justify-center text-[10px] hover:bg-amber-100 shadow-sm"
+                  title="Desfazer Conclusão (Voltar para Pendente)"
+                >
+                  🔄
+                </button>
+              )}
               <button onClick={() => setAuthModal({ type: 'edit', task })} className="w-8 h-8 bg-slate-50 text-slate-400 rounded-lg flex items-center justify-center text-[10px] hover:bg-indigo-50 hover:text-indigo-600 shadow-sm">✏️</button>
               <button onClick={() => setAuthModal({ type: 'delete', task })} className="w-8 h-8 bg-slate-50 text-slate-400 rounded-lg flex items-center justify-center text-[10px] hover:bg-rose-50 hover:text-rose-600 shadow-sm">🗑️</button>
            </div>

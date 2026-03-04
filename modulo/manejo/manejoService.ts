@@ -238,5 +238,38 @@ export const manejoService = {
       const local = getLocalManejos().filter(m => m.id !== id);
       saveLocalManejos(local);
     }
+  },
+
+  async revertTask(id: string) {
+    const editTimestamp = new Date().toISOString();
+    if (isSupabaseConfigured) {
+      const { error } = await supabase
+        .from('manejos')
+        .update({
+          status: StatusManejo.PENDENTE,
+          data_execucao: null,
+          colaborador: null,
+          observacoes: null,
+          editado_por_gerente: true,
+          data_ultima_edicao: editTimestamp
+        })
+        .eq('id', id);
+      if (error) throw error;
+    } else {
+      const local = getLocalManejos();
+      const idx = local.findIndex(m => m.id === id);
+      if (idx !== -1) {
+        local[idx] = {
+          ...local[idx],
+          status: StatusManejo.PENDENTE,
+          dataExecucao: undefined,
+          colaborador: undefined,
+          observacoes: undefined,
+          editadoPorGerente: true,
+          dataUltimaEdicao: editTimestamp
+        };
+        saveLocalManejos(local);
+      }
+    }
   }
 };
