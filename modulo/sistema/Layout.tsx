@@ -2,14 +2,18 @@
 import React, { useState, useEffect } from 'react';
 import { supabase, isSupabaseConfigured } from '../../lib/supabase';
 
+import { Manejo } from '../../types';
+
 interface LayoutProps {
   children: React.ReactNode;
   activeTab: string;
   setActiveTab: (tab: string) => void;
   headerExtra?: React.ReactNode;
+  isOperator?: boolean;
+  activeProtocolTask?: Manejo | null;
 }
 
-const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab, headerExtra }) => {
+const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab, headerExtra, isOperator, activeProtocolTask }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isDesktopCollapsed, setIsDesktopCollapsed] = useState(() => {
     const saved = localStorage.getItem('ovi_sidebar_collapsed');
@@ -37,7 +41,9 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab, head
     { id: 'settings', label: 'Ajustes', icon: '⚙️', category: 'Sistema' },
   ];
 
-  const bottomTabs = menuItems.filter(item => ['dashboard', 'sheep', 'manejo', 'guia'].includes(item.id));
+  const filteredMenuItems = isOperator ? menuItems.filter(item => item.id === activeTab) : menuItems;
+
+  const bottomTabs = filteredMenuItems.filter(item => ['dashboard', 'sheep', 'manejo', 'guia', 'weight', 'ecc', 'famacha', 'repro'].includes(item.id));
 
   const handleTabClick = (id: string) => {
     setActiveTab(id);
@@ -67,17 +73,21 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab, head
         </div>
         
         <nav className="flex-1 p-3 space-y-4 overflow-y-auto custom-scrollbar dark-scrollbar">
-          {['Principal', 'Operacional', 'Suporte', 'Cadastros', 'Sistema'].map(cat => (
-            <div key={cat} className="space-y-1">
-              {!isDesktopCollapsed && <h3 className="px-3 text-[9px] uppercase tracking-widest text-slate-500 font-black mb-1">{cat}</h3>}
-              {menuItems.filter(i => i.category === cat).map((item) => (
-                <button key={item.id} onClick={() => setActiveTab(item.id)} className={`w-full flex items-center rounded-xl transition-all ${isDesktopCollapsed ? 'justify-center py-3' : 'gap-3 px-3 py-2.5'} ${activeTab === item.id ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-800'}`}>
-                  <span className="text-base">{item.icon}</span>
-                  {!isDesktopCollapsed && <span className="font-bold text-[11px] uppercase tracking-tight">{item.label}</span>}
-                </button>
-              ))}
-            </div>
-          ))}
+          {['Principal', 'Operacional', 'Suporte', 'Cadastros', 'Sistema'].map(cat => {
+            const items = filteredMenuItems.filter(i => i.category === cat);
+            if (items.length === 0) return null;
+            return (
+              <div key={cat} className="space-y-1">
+                {!isDesktopCollapsed && <h3 className="px-3 text-[9px] uppercase tracking-widest text-slate-500 font-black mb-1">{cat}</h3>}
+                {items.map((item) => (
+                  <button key={item.id} onClick={() => setActiveTab(item.id)} className={`w-full flex items-center rounded-xl transition-all ${isDesktopCollapsed ? 'justify-center py-3' : 'gap-3 px-3 py-2.5'} ${activeTab === item.id ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-800'}`}>
+                    <span className="text-base">{item.icon}</span>
+                    {!isDesktopCollapsed && <span className="font-bold text-[11px] uppercase tracking-tight">{item.label}</span>}
+                  </button>
+                ))}
+              </div>
+            );
+          })}
         </nav>
 
         <div className="p-3 border-t border-slate-800 space-y-1">
@@ -140,7 +150,7 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab, head
               <div className="w-10 h-1 bg-slate-200 rounded-full mx-auto mb-6"></div>
               
               <div className="grid grid-cols-2 gap-3 mb-8">
-                 {menuItems.map(item => (
+                 {filteredMenuItems.map(item => (
                     <button key={item.id} onClick={() => handleTabClick(item.id)} className={`flex items-center gap-3 p-4 rounded-2xl border transition-all ${activeTab === item.id ? 'bg-emerald-600 border-emerald-600 text-white shadow-lg' : 'bg-slate-50 border-slate-100 text-slate-600'}`}>
                        <span className="text-lg">{item.icon}</span>
                        <span className="font-bold text-[10px] uppercase">{item.label}</span>

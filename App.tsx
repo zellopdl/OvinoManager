@@ -18,7 +18,7 @@ import ReproductionManager from './modulo/reproducao/ReproductionManager.tsx';
 import Login from './modulo/sistema/Login.tsx';
 import NoticeBoard from './modulo/operacional/NoticeBoard.tsx';
 
-import { Sheep, Breed, Supplier, Group, Paddock, BreedingPlan } from './types.ts';
+import { Sheep, Breed, Supplier, Group, Paddock, BreedingPlan, Manejo, ProtocoloManejo } from './types.ts';
 import { sheepService } from './modulo/rebanho/sheepService.ts';
 import { entityService } from './modulo/cadastros/entityService.ts';
 import { breedingPlanService } from './modulo/reproducao/breedingPlanService.ts';
@@ -34,6 +34,7 @@ const App: React.FC = () => {
   const [editingSheep, setEditingSheep] = useState<Sheep | undefined>(undefined);
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [activeProtocolTask, setActiveProtocolTask] = useState<Manejo | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'online' | 'local'>('connecting');
   const [aiStatus, setAiStatus] = useState<'online' | 'error' | 'none'>(
     (process.env.GEMINI_API_KEY || (import.meta as any).env?.VITE_GEMINI_API_KEY) ? 'online' : 'none'
@@ -271,12 +272,33 @@ const App: React.FC = () => {
   // VERIFICAÇÃO DE PERFIL OPERADOR (QUADRO DE AVISOS)
   const isOperator = session?.user?.email === 'operador@ovimanager.com';
 
-  if (isOperator) {
-    return <NoticeBoard key="operator-notice-board" />;
+  if (isOperator && !activeProtocolTask) {
+    return <NoticeBoard key="operator-notice-board" onStartProtocol={(task) => {
+      setActiveProtocolTask(task);
+      // Mapeia o protocolo para a aba correta
+      if (task.protocolo === ProtocoloManejo.PESAGEM) setActiveTab('weight');
+      else if (task.protocolo === ProtocoloManejo.FAMACHA) setActiveTab('famacha');
+      else if (task.protocolo === ProtocoloManejo.ECC) setActiveTab('ecc');
+      else if (task.protocolo === ProtocoloManejo.REPRODUCAO) setActiveTab('repro');
+    }} />;
   }
 
+  const HeaderExtra = (
+    <div className="flex items-center gap-4">
+      {isOperator && activeProtocolTask && (
+        <button 
+          onClick={() => setActiveProtocolTask(null)}
+          className="px-4 py-2 bg-rose-600 text-white rounded-xl font-black uppercase text-[10px] shadow-lg animate-pulse"
+        >
+          ← Voltar ao Mural
+        </button>
+      )}
+      {HeaderActions}
+    </div>
+  );
+
   return (
-    <Layout activeTab={activeTab} setActiveTab={setActiveTab} headerExtra={HeaderActions}>
+    <Layout activeTab={activeTab} setActiveTab={setActiveTab} headerExtra={HeaderExtra} isOperator={isOperator} activeProtocolTask={activeProtocolTask}>
       <div className="min-h-[80vh] flex flex-col">{renderContent()}</div>
       {analysisSheep && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">

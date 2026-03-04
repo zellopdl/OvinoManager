@@ -1,6 +1,6 @@
 
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
-import { Manejo, TipoManejo, StatusManejo, Recorrencia } from '../types';
+import { Manejo, TipoManejo, StatusManejo, Recorrencia, ProtocoloManejo } from '../types';
 import { getLocalDateString } from '../utils';
 
 const LOCAL_STORAGE_KEY = 'ovimanager_manejo_data';
@@ -37,6 +37,7 @@ export const manejoService = {
           colaborador: m.colaborador,
           status: m.status as StatusManejo,
           procedimento: m.procedimento,
+          protocolo: m.protocolo as ProtocoloManejo,
           observacoes: m.observacoes,
           ovelhasIds: m.manejo_ovelhas?.map((mo: any) => mo.ovelha_id) || [],
           grupoId: m.grupo_id,
@@ -58,6 +59,7 @@ export const manejoService = {
         .insert([{
           titulo: manejo.titulo,
           tipo: manejo.tipo,
+          protocolo: manejo.protocolo,
           recorrencia: manejo.recorrencia || Recorrencia.NENHUMA,
           recorrencia_config: manejo.recorrenciaConfig || {},
           grupo_id: manejo.grupoId || null,
@@ -103,6 +105,7 @@ export const manejoService = {
         .update({
           titulo: manejo.titulo,
           tipo: manejo.tipo,
+          protocolo: manejo.protocolo,
           recorrencia: manejo.recorrencia,
           recorrencia_config: manejo.recorrenciaConfig,
           grupo_id: manejo.grupoId || null,

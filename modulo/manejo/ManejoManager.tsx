@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Manejo, Sheep, Paddock, Group, StatusManejo, TipoManejo, Recorrencia, RecorrenciaConfig } from '../../types';
+import { Manejo, Sheep, Paddock, Group, StatusManejo, TipoManejo, Recorrencia, RecorrenciaConfig, ProtocoloManejo } from '../../types';
 import { manejoService } from './manejoService.ts';
 import { getLocalDateString, formatBrazilianDate } from '../../utils';
 import { avisoService, Aviso } from '../operacional/avisoService';
@@ -39,6 +39,7 @@ const ManejoManager: React.FC<ManejoManagerProps> = ({ sheep, paddocks, groups, 
     titulo: '',
     procedimento: '', // Instruções do Gerente
     tipo: TipoManejo.RECORRENTE,
+    protocolo: ProtocoloManejo.NENHUM,
     recorrencia: Recorrencia.NENHUMA,
     dataPlanejada: getLocalDateString(),
     horaPlanejada: '08:00',
@@ -111,6 +112,7 @@ const ManejoManager: React.FC<ManejoManagerProps> = ({ sheep, paddocks, groups, 
           titulo: task.titulo,
           procedimento: task.procedimento || '',
           tipo: task.tipo,
+          protocolo: task.protocolo || ProtocoloManejo.NENHUM,
           recorrencia: task.recorrencia,
           dataPlanejada: task.dataPlanejada.split('T')[0],
           horaPlanejada: task.horaPlanejada || '08:00',
@@ -149,10 +151,11 @@ const ManejoManager: React.FC<ManejoManagerProps> = ({ sheep, paddocks, groups, 
   const handleSaveManejo = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const payload = {
+      const payload: Partial<Manejo> = {
         titulo: formManejo.titulo,
         procedimento: formManejo.procedimento,
         tipo: formManejo.tipo,
+        protocolo: formManejo.protocolo,
         recorrencia: formManejo.recorrencia,
         dataPlanejada: formManejo.dataPlanejada,
         horaPlanejada: formManejo.horaPlanejada,
@@ -399,6 +402,17 @@ const ManejoManager: React.FC<ManejoManagerProps> = ({ sheep, paddocks, groups, 
                    <div>
                       <label className="block text-[9px] font-black text-slate-400 uppercase mb-2 ml-1">Orientações / Instruções Técnicas (Para o Operador)</label>
                       <textarea className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl font-medium text-sm focus:bg-white focus:border-indigo-500 outline-none transition-all resize-none" rows={3} value={formManejo.procedimento} onChange={e => setFormManejo({...formManejo, procedimento: e.target.value})} placeholder="Ex: Utilizar agulha 10x10, aplicar via subcutânea na tábua do pescoço..." />
+                   </div>
+
+                   <div>
+                      <label className="block text-[9px] font-black text-indigo-600 uppercase mb-2 ml-1">Vincular Protocolo (Libera Módulo para Operador)</label>
+                      <select className="w-full p-4 bg-indigo-50 border border-indigo-100 rounded-2xl font-black text-xs uppercase text-indigo-700" value={formManejo.protocolo} onChange={e => setFormManejo({...formManejo, protocolo: e.target.value as ProtocoloManejo})}>
+                        <option value={ProtocoloManejo.NENHUM}>Nenhum Protocolo</option>
+                        <option value={ProtocoloManejo.PESAGEM}>Protocolo de Pesagem</option>
+                        <option value={ProtocoloManejo.FAMACHA}>Protocolo de Famacha</option>
+                        <option value={ProtocoloManejo.ECC}>Protocolo de ECC</option>
+                        <option value={ProtocoloManejo.REPRODUCAO}>Protocolo de Reprodução</option>
+                      </select>
                    </div>
                 </div>
                 

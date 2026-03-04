@@ -64,6 +64,14 @@ export interface BreedingRecord {
   created_at?: string;
 }
 
+export enum ProtocoloManejo {
+  PESAGEM = 'pesagem',
+  FAMACHA = 'famacha',
+  ECC = 'ecc',
+  REPRODUCAO = 'reproducao',
+  NENHUM = 'nenhum'
+}
+
 export enum TipoManejo {
   RECORRENTE = 'recorrente',
   SAZONAL = 'sazonal',
@@ -181,6 +189,7 @@ export interface Manejo {
   colaborador?: string;
   status: StatusManejo;
   procedimento?: string;
+  protocolo?: ProtocoloManejo;
   observacoes?: string;
   ovelhasIds?: string[];
   grupoId?: string;

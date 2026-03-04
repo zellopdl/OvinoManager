@@ -143,7 +143,7 @@ const ManejoCalendar: React.FC<ManejoCalendarProps> = ({ manejos, onEdit, onDele
         {/* CALENDÁRIO GRID */}
         <div className="w-full md:w-[450px] p-4 md:p-6 bg-white border-r border-slate-100 shrink-0">
           <div className="grid grid-cols-7 mb-2">
-            {dayLabels.map(l => <div key={l} className="text-center text-[10px] font-black text-slate-400 py-2">{l}</div>)}
+            {dayLabels.map((l, i) => <div key={i} className="text-center text-[10px] font-black text-slate-400 py-2">{l}</div>)}
           </div>
           <div className="grid grid-cols-7 gap-1 sm:gap-2">
             {calendarGrid.map((d, i) => d ? (

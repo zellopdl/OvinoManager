@@ -1,12 +1,16 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Manejo, StatusManejo } from '../../types';
+import { Manejo, StatusManejo, ProtocoloManejo } from '../../types';
 import { manejoService } from '../manejo/manejoService';
 import { avisoService, Aviso } from './avisoService';
 import { getLocalDateString, formatBrazilianDate } from '../../utils';
 import { supabase } from '../../lib/supabase';
 
-const NoticeBoard: React.FC = () => {
+interface NoticeBoardProps {
+  onStartProtocol?: (task: Manejo) => void;
+}
+
+const NoticeBoard: React.FC<NoticeBoardProps> = ({ onStartProtocol }) => {
   const [manejos, setManejos] = useState<Manejo[]>([]);
   const [avisos, setAvisos] = useState<Aviso[]>([]);
   const [loading, setLoading] = useState(true);
@@ -321,7 +325,20 @@ const NoticeBoard: React.FC = () => {
                           <div className="w-8 h-8 bg-slate-800 rounded-xl flex items-center justify-center text-lg">👥</div>
                           <p className="text-[10px] font-black text-slate-500 uppercase">{task.grupoId || 'Geral'}</p>
                         </div>
-                        <div className="w-12 h-12 bg-emerald-600 text-white rounded-xl flex items-center justify-center text-2xl shadow-xl shadow-emerald-900/20">✓</div>
+                        <div className="flex gap-2">
+                          {task.protocolo && task.protocolo !== ProtocoloManejo.NENHUM && onStartProtocol && (
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onStartProtocol(task);
+                              }}
+                              className="px-4 py-2 bg-indigo-600 text-white rounded-xl font-black uppercase text-[9px] shadow-lg animate-pulse"
+                            >
+                              Iniciar Protocolo
+                            </button>
+                          )}
+                          <div className="w-12 h-12 bg-emerald-600 text-white rounded-xl flex items-center justify-center text-2xl shadow-xl shadow-emerald-900/20">✓</div>
+                        </div>
                       </div>
                     </div>
                   );
