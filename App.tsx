@@ -90,15 +90,6 @@ const App: React.FC = () => {
   const loadInitialData = useCallback(async (forceLocal = false) => {
     if (!session && isSupabaseConfigured) return;
     
-    // OTIMIZAÇÃO: Se for operador, não carrega os dados pesados do rebanho aqui
-    // O NoticeBoard já carrega o que precisa de forma independente
-    const isOperator = session?.user?.email === 'operador@ovimanager.com';
-    if (isOperator) {
-      setLoading(false);
-      setConnectionStatus('online');
-      return;
-    }
-
     try {
       if (!forceLocal && isSupabaseConfigured) setConnectionStatus('connecting');
       else setConnectionStatus('local');
