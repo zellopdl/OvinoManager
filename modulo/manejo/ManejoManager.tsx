@@ -34,6 +34,7 @@ const ManejoManager: React.FC<ManejoManagerProps> = ({ sheep, paddocks, groups, 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isAllTasksModalOpen, setIsAllTasksModalOpen] = useState(false);
   const [taskSearch, setTaskSearch] = useState('');
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
 
   const [openSections, setOpenSections] = useState({ urgent: true, today: true, done: false });
 
@@ -580,36 +581,68 @@ const ManejoManager: React.FC<ManejoManagerProps> = ({ sheep, paddocks, groups, 
               />
             </div>
 
-            <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-3">
-              {manejos
-                .filter(t => 
-                  t.titulo.toLowerCase().includes(taskSearch.toLowerCase()) || 
-                  (t.grupoId && t.grupoId.toLowerCase().includes(taskSearch.toLowerCase()))
-                )
-                .sort((a, b) => b.dataPlanejada.localeCompare(a.dataPlanejada))
-                .map(task => (
-                  <div key={task.id} className="p-4 bg-white border border-slate-100 rounded-3xl flex items-center justify-between hover:border-indigo-200 transition-all group">
-                    <div className="flex items-center gap-4">
-                      <div className={`w-10 h-10 rounded-2xl flex items-center justify-center text-lg ${task.status === StatusManejo.CONCLUIDO ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
-                        {task.status === StatusManejo.CONCLUIDO ? '✓' : '⏳'}
+            <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-8">
+              {[
+                { id: Recorrencia.DIARIA, label: 'Frequência Diária', color: 'text-sky-600', bg: 'bg-sky-50' },
+                { id: Recorrencia.SEMANAL, label: 'Frequência Semanal', color: 'text-indigo-600', bg: 'bg-indigo-50' },
+                { id: Recorrencia.MENSAL, label: 'Frequência Mensal', color: 'text-purple-600', bg: 'bg-purple-50' },
+                { id: Recorrencia.ANUAL, label: 'Frequência Anual', color: 'text-amber-600', bg: 'bg-amber-50' },
+                { id: Recorrencia.NENHUMA, label: 'Sem Recorrência (Único)', color: 'text-slate-500', bg: 'bg-slate-50' }
+              ].map(group => {
+                const groupTasks = manejos
+                  .filter(t => t.recorrencia === group.id)
+                  .filter(t => 
+                    t.titulo.toLowerCase().includes(taskSearch.toLowerCase()) || 
+                    (t.grupoId && t.grupoId.toLowerCase().includes(taskSearch.toLowerCase()))
+                  )
+                  .sort((a, b) => b.dataPlanejada.localeCompare(a.dataPlanejada));
+
+                if (groupTasks.length === 0) return null;
+
+                return (
+                  <div key={group.id} className="space-y-4">
+                    <button 
+                      onClick={() => setExpandedGroups(prev => ({ ...prev, [group.id]: !prev[group.id] }))}
+                      className="w-full flex items-center gap-3 px-4 py-3 bg-slate-50 hover:bg-slate-100 rounded-2xl transition-all group/header"
+                    >
+                      <div className={`w-1 h-6 rounded-full ${group.bg.replace('50', '500')}`}></div>
+                      <h4 className={`text-[11px] font-black uppercase tracking-widest ${group.color}`}>{group.label}</h4>
+                      <div className="flex items-center gap-3 ml-auto">
+                        <span className="text-[10px] font-bold text-slate-300">{groupTasks.length} tarefas</span>
+                        <span className={`text-slate-300 transition-transform duration-300 ${expandedGroups[group.id] ? 'rotate-180' : ''}`}>▼</span>
                       </div>
-                      <div>
-                        <h4 className="font-black text-slate-800 text-xs uppercase">{task.titulo}</h4>
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className="text-[9px] font-bold text-slate-400 uppercase">📅 {formatBrazilianDate(task.dataPlanejada)}</span>
-                          <span className="text-[9px] font-bold text-slate-400 uppercase">👥 {task.grupoId || 'GERAL'}</span>
-                          {task.status === StatusManejo.CONCLUIDO && (
-                            <span className="text-[8px] font-black text-emerald-500 bg-emerald-50 px-2 py-0.5 rounded uppercase">Concluído</span>
-                          )}
-                        </div>
+                    </button>
+                    
+                    {expandedGroups[group.id] && (
+                      <div className="space-y-2 animate-in slide-in-from-top-2 duration-300">
+                        {groupTasks.map(task => (
+                          <div key={task.id} className="p-4 bg-white border border-slate-100 rounded-3xl flex items-center justify-between hover:border-indigo-200 transition-all group">
+                            <div className="flex items-center gap-4">
+                              <div className={`w-10 h-10 rounded-2xl flex items-center justify-center text-lg ${task.status === StatusManejo.CONCLUIDO ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
+                                {task.status === StatusManejo.CONCLUIDO ? '✓' : '⏳'}
+                              </div>
+                              <div>
+                                <h4 className="font-black text-slate-800 text-xs uppercase">{task.titulo}</h4>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <span className="text-[9px] font-bold text-slate-400 uppercase">📅 {formatBrazilianDate(task.dataPlanejada)}</span>
+                                  <span className="text-[9px] font-bold text-slate-400 uppercase">👥 {task.grupoId || 'GERAL'}</span>
+                                  {task.status === StatusManejo.CONCLUIDO && (
+                                    <span className="text-[8px] font-black text-emerald-500 bg-emerald-50 px-2 py-0.5 rounded uppercase">Concluído</span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex gap-2">
+                               <button onClick={() => { setIsAllTasksModalOpen(false); setAuthModal({ type: 'edit', task }); }} className="w-8 h-8 bg-slate-50 text-slate-400 rounded-lg flex items-center justify-center text-[10px] hover:bg-indigo-50 hover:text-indigo-600">✏️</button>
+                               <button onClick={() => { setIsAllTasksModalOpen(false); setAuthModal({ type: 'delete', task }); }} className="w-8 h-8 bg-slate-50 text-slate-400 rounded-lg flex items-center justify-center text-[10px] hover:bg-rose-50 hover:text-rose-600">🗑️</button>
+                            </div>
+                          </div>
+                        ))}
                       </div>
-                    </div>
-                    <div className="flex gap-2">
-                       <button onClick={() => { setIsAllTasksModalOpen(false); setAuthModal({ type: 'edit', task }); }} className="w-8 h-8 bg-slate-50 text-slate-400 rounded-lg flex items-center justify-center text-[10px] hover:bg-indigo-50 hover:text-indigo-600">✏️</button>
-                       <button onClick={() => { setIsAllTasksModalOpen(false); setAuthModal({ type: 'delete', task }); }} className="w-8 h-8 bg-slate-50 text-slate-400 rounded-lg flex items-center justify-center text-[10px] hover:bg-rose-50 hover:text-rose-600">🗑️</button>
-                    </div>
+                    )}
                   </div>
-                ))}
+                );
+              })}
               {manejos.length === 0 && <p className="text-center py-20 text-[10px] font-black text-slate-300 uppercase">Nenhum agendamento encontrado</p>}
             </div>
           </div>
