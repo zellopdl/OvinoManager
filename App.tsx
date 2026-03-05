@@ -18,7 +18,7 @@ import ReproductionManager from './modulo/reproducao/ReproductionManager.tsx';
 import Login from './modulo/sistema/Login.tsx';
 import NoticeBoard from './modulo/operacional/NoticeBoard.tsx';
 
-import { Sheep, Breed, Supplier, Group, Paddock, BreedingPlan, Manejo, ProtocoloManejo } from './types.ts';
+import { Sheep, Breed, Supplier, Group, Paddock, BreedingPlan, Manejo, ProtocoloManejo, Perfil } from './types.ts';
 import { sheepService } from './modulo/rebanho/sheepService.ts';
 import { entityService } from './modulo/cadastros/entityService.ts';
 import { breedingPlanService } from './modulo/reproducao/breedingPlanService.ts';
@@ -71,6 +71,22 @@ const App: React.FC = () => {
   const [groups, setGroups] = useState<Group[]>([]);
   const [paddocks, setPaddocks] = useState<Paddock[]>([]);
   const [breedingPlans, setBreedingPlans] = useState<BreedingPlan[]>([]);
+  const [perfil, setPerfil] = useState<Perfil | null>(null);
+
+  useEffect(() => {
+    if (session?.user?.id) {
+      supabase
+        .from('perfis')
+        .select('*')
+        .eq('id', session.user.id)
+        .single()
+        .then(({ data }: { data: any }) => {
+          if (data) setPerfil(data);
+        });
+    } else {
+      setPerfil(null);
+    }
+  }, [session]);
 
   useEffect(() => {
     if (isSupabaseConfigured) {
@@ -160,6 +176,7 @@ const App: React.FC = () => {
     try {
       localStorage.clear();
       sessionStorage.clear();
+      setPerfil(null);
       if (isSupabaseConfigured) {
         supabase.auth.signOut().catch(() => {});
       }
@@ -261,7 +278,7 @@ const App: React.FC = () => {
   if (!session && isSupabaseConfigured) return <Login />;
 
   // VERIFICAÇÃO DE PERFIL OPERADOR (QUADRO DE AVISOS)
-  const isOperator = session?.user?.email === 'operador@ovimanager.com';
+  const isOperator = perfil ? perfil.role === 'operador' : session?.user?.email === 'operador@ovimanager.com';
 
   if (isOperator && !activeProtocolTask) {
     return <NoticeBoard key="operator-notice-board" onStartProtocol={(task) => {

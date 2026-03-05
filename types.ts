@@ -227,3 +227,10 @@ export interface RadarAnalise {
   status: 'pendente' | 'executado';
   created_at?: string;
 }
+
+export interface Perfil {
+  id: string;
+  email: string;
+  role: 'gerente' | 'operador';
+  created_at?: string;
+}
