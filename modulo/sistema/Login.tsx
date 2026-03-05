@@ -3,20 +3,30 @@ import React, { useState } from 'react';
 import { supabase } from '../../lib/supabase';
 
 const Login: React.FC = () => {
+  const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
+    setMessage(null);
     try {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) throw error;
+      if (isSignUp) {
+        const { error } = await supabase.auth.signUp({ email, password });
+        if (error) throw error;
+        setMessage('Cadastro realizado! Verifique seu e-mail ou faça login.');
+        setIsSignUp(false);
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+      }
     } catch (err: any) {
-      setError('E-mail ou senha incorretos.');
+      setError(err.message || 'Ocorreu um erro.');
     } finally {
       setLoading(false);
     }
@@ -28,15 +38,30 @@ const Login: React.FC = () => {
         <div className="text-center mb-8">
           <div className="w-20 h-20 bg-emerald-500 rounded-3xl flex items-center justify-center text-3xl mx-auto mb-4 animate-bounce">🐑</div>
           <h1 className="text-3xl font-black text-slate-900 uppercase">OviManager</h1>
+          <p className="text-[10px] font-black text-slate-400 uppercase mt-2 tracking-widest">
+            {isSignUp ? 'Crie sua conta' : 'Acesse o sistema'}
+          </p>
         </div>
-        <form onSubmit={handleLogin} className="space-y-5">
+        <form onSubmit={handleSubmit} className="space-y-5">
           {error && <div className="p-3 bg-rose-50 text-rose-600 rounded-xl text-xs font-black uppercase text-center">{error}</div>}
+          {message && <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl text-xs font-black uppercase text-center">{message}</div>}
+          
           <input type="email" required className="w-full p-4 bg-slate-50 border rounded-2xl outline-none font-bold" placeholder="E-mail" value={email} onChange={e => setEmail(e.target.value)} />
           <input type="password" required className="w-full p-4 bg-slate-50 border rounded-2xl outline-none font-bold" placeholder="Senha" value={password} onChange={e => setPassword(e.target.value)} />
-          <button type="submit" disabled={loading} className="w-full py-4 bg-emerald-600 text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl">
-            {loading ? 'Acessando...' : 'Entrar no Sistema'}
+          
+          <button type="submit" disabled={loading} className="w-full py-4 bg-emerald-600 text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 transition-all">
+            {loading ? 'Processando...' : isSignUp ? 'Criar Conta' : 'Entrar no Sistema'}
           </button>
         </form>
+
+        <div className="mt-8 text-center">
+          <button 
+            onClick={() => setIsSignUp(!isSignUp)} 
+            className="text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-emerald-600 transition-colors"
+          >
+            {isSignUp ? 'Já tem conta? Faça Login' : 'Não tem conta? Cadastre-se'}
+          </button>
+        </div>
       </div>
     </div>
   );
