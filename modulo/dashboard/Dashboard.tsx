@@ -133,10 +133,54 @@ const Dashboard: React.FC<DashboardProps> = ({ sheep, breeds, groups, paddocks =
   const breedingAlerts = useMemo(() => {
     const today = new Date();
     today.setHours(0,0,0,0);
+    
     return plans.filter(p => p.status !== 'concluido').map(plan => {
+      // Buscar as ovelhas reais deste plano
+      const planEwesIds = plan.ovelhas.map(oe => oe.eweId);
+      const planSheep = sheep.filter(s => planEwesIds.includes(s.id));
+      const sire = sheep.find(s => s.id === plan.reprodutorId);
+      
+      const totalEwes = planSheep.length;
+      const pregnantEwes = planSheep.filter(s => s.prenha);
+      const vaziaEwes = planSheep.filter(s => !s.prenha);
+      
       const start = new Date(plan.dataInicioMonta);
       start.setHours(0,0,0,0);
       const diffDays = Math.floor((today.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+
+      // Lógica de Ciclos para estimar tempo de prenhez
+      const cycles = [
+        { id: 1, start: 0, offset: 0 },
+        { id: 2, start: 17, offset: 17 },
+        { id: 3, start: 34, offset: 34 }
+      ];
+
+      // Agrupar por ciclo de confirmação
+      const byCycle = {
+        ciclo1: plan.ovelhas.filter(oe => oe.ciclo1 === 'prenha').map(oe => planSheep.find(s => s.id === oe.eweId)).filter(Boolean) as Sheep[],
+        ciclo2: plan.ovelhas.filter(oe => oe.ciclo2 === 'prenha').map(oe => planSheep.find(s => s.id === oe.eweId)).filter(Boolean) as Sheep[],
+        ciclo3: plan.ovelhas.filter(oe => oe.ciclo3 === 'prenha').map(oe => planSheep.find(s => s.id === oe.eweId)).filter(Boolean) as Sheep[]
+      };
+
+      // Calcular tempo de prenhez (mínimo e máximo)
+      let minPregDays = 999;
+      let maxPregDays = 0;
+      
+      if (byCycle.ciclo1.length > 0) {
+        const days = diffDays - 0;
+        minPregDays = Math.min(minPregDays, days);
+        maxPregDays = Math.max(maxPregDays, days);
+      }
+      if (byCycle.ciclo2.length > 0) {
+        const days = diffDays - 17;
+        minPregDays = Math.min(minPregDays, days);
+        maxPregDays = Math.max(maxPregDays, days);
+      }
+      if (byCycle.ciclo3.length > 0) {
+        const days = diffDays - 34;
+        minPregDays = Math.min(minPregDays, days);
+        maxPregDays = Math.max(maxPregDays, days);
+      }
 
       const cycleIntervals = [
         { start: 0, end: 3, label: '1ª Monta (Início)' },
@@ -148,16 +192,40 @@ const Dashboard: React.FC<DashboardProps> = ({ sheep, breeds, groups, paddocks =
       const isMachoDentro = activeCycleIdx !== -1;
       const nextCycle = cycleIntervals.find(c => c.start > diffDays);
       
+      let status: 'macho_dentro' | 'macho_fora' | 'concluido' = isMachoDentro ? 'macho_dentro' : 'macho_fora';
+      let message = '';
+      let countdown = 0;
+
+      if (vaziaEwes.length === 0 && totalEwes > 0) {
+        status = 'concluido';
+        message = `Todas as ${totalEwes} ovelhas deste lote estão confirmadas prenhas.`;
+        countdown = 0;
+      } else {
+        countdown = isMachoDentro ? cycleIntervals[activeCycleIdx].end - diffDays : (nextCycle ? nextCycle.start - diffDays : 0);
+        message = isMachoDentro 
+          ? `Reprodutor no lote para cobertura (${cycleIntervals[activeCycleIdx].label}).` 
+          : (nextCycle ? `Intervalo de descanso. Aguardando retorno de cio das ${vaziaEwes.length} ovelhas vazias.` : `Estação encerrada no calendário. ${vaziaEwes.length} ovelhas não confirmadas.`);
+      }
+      
       return {
         id: plan.id,
         nome: plan.nome,
-        status: isMachoDentro ? 'macho_dentro' : 'macho_fora',
-        countdown: isMachoDentro ? cycleIntervals[activeCycleIdx].end - diffDays : (nextCycle ? nextCycle.start - diffDays : 0),
-        message: isMachoDentro ? `Reprodutor no lote para cobertura (${cycleIntervals[activeCycleIdx].label}).` : (nextCycle ? `Intervalo de descanso. Aguardando retorno de cio.` : `Estação encerrada no calendário.`),
-        diffDays
+        status,
+        countdown,
+        message,
+        diffDays,
+        sireName: sire?.nome || sire?.brinco || 'Não identificado',
+        pregRange: minPregDays === 999 ? null : { min: minPregDays, max: maxPregDays },
+        stats: {
+          total: totalEwes,
+          prenhas: pregnantEwes.length,
+          vazias: vaziaEwes.length,
+          vaziasList: vaziaEwes.map(s => s.brinco)
+        },
+        byCycle
       };
     });
-  }, [plans]);
+  }, [plans, sheep]);
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500 pb-20">
@@ -169,25 +237,98 @@ const Dashboard: React.FC<DashboardProps> = ({ sheep, breeds, groups, paddocks =
           <div className="grid grid-cols-1 gap-4">
             {breedingAlerts.map(alert => (
               <div key={alert.id} className="bg-white rounded-[32px] border-2 border-slate-100 shadow-xl overflow-hidden flex flex-col md:flex-row">
-                <div className={`md:w-64 p-8 flex flex-col items-center justify-center text-center gap-2 transition-colors ${alert.status === 'macho_dentro' ? 'bg-emerald-500 text-white' : 'bg-amber-400 text-white'}`}>
-                  <span className="text-4xl">{alert.status === 'macho_dentro' ? '🐏' : '⏳'}</span>
-                  <p className="text-[10px] font-black uppercase opacity-80">Reprodutor:</p>
-                  <p className="text-xl font-black uppercase">{alert.status === 'macho_dentro' ? 'NO LOTE' : 'EM DESCANSO'}</p>
+                <div className={`md:w-64 p-8 flex flex-col items-center justify-center text-center gap-2 transition-colors ${
+                  alert.status === 'concluido' ? 'bg-emerald-600 text-white' :
+                  alert.status === 'macho_dentro' ? 'bg-emerald-500 text-white' : 'bg-amber-400 text-white'
+                }`}>
+                  <span className="text-4xl">
+                    {alert.status === 'concluido' ? '🎉' : alert.status === 'macho_dentro' ? '🐏' : '⏳'}
+                  </span>
+                  <p className="text-[10px] font-black uppercase opacity-80">Status do Lote:</p>
+                  <p className="text-xl font-black uppercase">
+                    {alert.status === 'concluido' ? 'CONCLUÍDO' : alert.status === 'macho_dentro' ? 'NO LOTE' : 'EM DESCANSO'}
+                  </p>
                 </div>
                 <div className="flex-1 p-8">
                   <div className="flex justify-between items-start mb-4">
                     <div>
                       <h4 className="text-xl font-black uppercase text-slate-800">{alert.nome}</h4>
-                      <p className="text-[11px] font-bold text-slate-400 italic">Iniciado há {alert.diffDays} dias</p>
+                      <p className="text-[11px] font-bold text-slate-400 italic">Iniciado há {alert.diffDays} dias • {alert.stats.total} Matrizes</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <div className="bg-emerald-50 px-3 py-1 rounded-lg border border-emerald-100 text-center">
+                        <p className="text-xs font-black text-emerald-600">{alert.stats.prenhas}</p>
+                        <p className="text-[7px] font-black text-emerald-400 uppercase">Prenhas</p>
+                      </div>
+                      <div className="bg-amber-50 px-3 py-1 rounded-lg border border-amber-100 text-center">
+                        <p className="text-xs font-black text-amber-600">{alert.stats.vazias}</p>
+                        <p className="text-[7px] font-black text-amber-400 uppercase">Vazias</p>
+                      </div>
                     </div>
                   </div>
-                  <div className="bg-slate-50 p-6 rounded-[28px] border border-slate-100 flex justify-between items-center">
-                    <p className="text-sm font-bold text-slate-700 uppercase leading-relaxed">{alert.message}</p>
-                    <div className="text-center bg-white px-6 py-4 rounded-2xl border shadow-sm">
-                       <p className="text-3xl font-black text-slate-800">{alert.countdown}</p>
-                       <p className="text-[8px] font-black text-slate-400 uppercase">Dias</p>
+                  
+                  <div className="bg-slate-50 p-6 rounded-[28px] border border-slate-100 flex flex-col md:flex-row justify-between items-center gap-4">
+                    <div className="flex-1">
+                      <p className="text-sm font-bold text-slate-700 uppercase leading-relaxed">{alert.message}</p>
+                      
+                      {alert.pregRange && (
+                        <div className="mt-2 flex items-center gap-2">
+                          <span className="bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded text-[9px] font-black uppercase">
+                            Tempo de Prenhez: {alert.pregRange.min === alert.pregRange.max ? `${alert.pregRange.min} dias` : `${alert.pregRange.min} a ${alert.pregRange.max} dias`}
+                          </span>
+                          <span className="text-[9px] font-bold text-slate-400 uppercase italic">Sire: {alert.sireName}</span>
+                        </div>
+                      )}
+
+                      {alert.stats.vazias > 0 && (
+                        <div className="mt-3 flex flex-wrap gap-1">
+                          <span className="text-[8px] font-black text-slate-400 uppercase mr-1">Aguardando:</span>
+                          {alert.stats.vaziasList.map(brinco => (
+                            <span key={brinco} className="bg-white px-2 py-0.5 rounded text-[8px] font-black text-amber-600 border border-amber-100 uppercase">
+                              #{brinco}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </div>
+                    {alert.status !== 'concluido' && (
+                      <div className="text-center bg-white px-6 py-4 rounded-2xl border shadow-sm shrink-0">
+                         <p className="text-3xl font-black text-slate-800">{alert.countdown}</p>
+                         <p className="text-[8px] font-black text-slate-400 uppercase">Dias</p>
+                      </div>
+                    )}
                   </div>
+
+                  {/* SUGESTÃO DE REAGRUPAMENTO */}
+                  {(alert.status === 'concluido' || alert.stats.prenhas > 0) && (
+                    <div className="mt-6 pt-6 border-t border-slate-100">
+                      <div className="flex items-center gap-2 mb-4">
+                        <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest bg-indigo-50 px-3 py-1 rounded-full">Sugestão de Reagrupamento Estratégico</span>
+                        {alert.status === 'concluido' && <span className="text-[8px] font-black text-emerald-600 uppercase animate-pulse">Lote Pronto para Divisão</span>}
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        {[
+                          { cycle: 1, label: '1º Ciclo', list: alert.byCycle.ciclo1 },
+                          { cycle: 2, label: '2º Ciclo', list: alert.byCycle.ciclo2 },
+                          { cycle: 3, label: '3º Ciclo', list: alert.byCycle.ciclo3 }
+                        ].map(c => c.list.length > 0 && (
+                          <div key={c.cycle} className="bg-slate-900 p-4 rounded-2xl border border-slate-800">
+                            <div className="flex justify-between items-center mb-2">
+                              <p className="text-[9px] font-black text-slate-400 uppercase">{c.label}</p>
+                              <span className="bg-emerald-500 text-white text-[8px] font-black px-2 py-0.5 rounded-full">{c.list.length} Ovelhas</span>
+                            </div>
+                            <p className="text-[8px] font-bold text-slate-500 uppercase mb-2">Pai: {alert.sireName}</p>
+                            <div className="flex flex-wrap gap-1">
+                              {c.list.map(s => (
+                                <span key={s.id} className="text-[7px] font-black text-slate-300 bg-slate-800 px-1.5 py-0.5 rounded border border-slate-700">#{s.brinco}</span>
+                              ))}
+                            </div>
+                            <p className="text-[7px] font-bold text-indigo-400 uppercase mt-3 italic">Trato: Nível {c.cycle === 1 ? 'Avançado' : c.cycle === 2 ? 'Intermediário' : 'Inicial'}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
