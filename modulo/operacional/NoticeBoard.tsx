@@ -11,7 +11,6 @@ interface NoticeBoardProps {
 }
 
 const NoticeBoard: React.FC<NoticeBoardProps> = ({ onStartProtocol }) => {
-  const [view, setView] = useState<'home' | 'mural' | 'tarefas'>('home');
   const [manejos, setManejos] = useState<Manejo[]>([]);
   const [avisos, setAvisos] = useState<Aviso[]>([]);
   const [loading, setLoading] = useState(true);
@@ -21,6 +20,7 @@ const NoticeBoard: React.FC<NoticeBoardProps> = ({ onStartProtocol }) => {
   const [notes, setNotes] = useState('');
   const [currentTime, setCurrentTime] = useState(new Date());
   const [audioEnabled, setAudioEnabled] = useState(false);
+  const [activeView, setActiveView] = useState<'none' | 'mural' | 'tarefas'>('none');
 
   const hasUrgentUnconfirmed = useMemo(() => 
     avisos.some(a => a.prioridade === 'urgente' && !a.confirmacoes?.some(c => c.user === 'Operador')),
@@ -35,7 +35,7 @@ const NoticeBoard: React.FC<NoticeBoardProps> = ({ onStartProtocol }) => {
   const activeTasks = useMemo(() => 
     manejos.filter(m => 
       m.status === StatusManejo.PENDENTE && 
-      m.dataPlanejada.split('T')[0] <= today
+      m.dataPlanejada.split('T')[0] === today
     ).sort((a, b) => a.dataPlanejada.localeCompare(b.dataPlanejada)), 
   [manejos, today]);
 
@@ -171,245 +171,216 @@ const NoticeBoard: React.FC<NoticeBoardProps> = ({ onStartProtocol }) => {
     );
   }
 
-  const renderHome = () => (
-    <div className="flex-1 flex flex-col items-center justify-center p-4 md:p-6 gap-4 md:gap-8 overflow-hidden">
-      {/* RELÓGIO E DATA - TAMANHO OTIMIZADO PARA CABER EM QUALQUER TELA */}
-      <div className="text-center space-y-1 md:space-y-2">
-        <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-black tracking-tighter text-white tabular-nums leading-none drop-shadow-2xl">
-          {currentTime.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-        </h1>
-        <p className="text-sm sm:text-base md:text-xl font-black text-emerald-500 uppercase tracking-[0.2em] md:tracking-[0.3em]">
-          {formatBrazilianDate(today)}
-        </p>
-      </div>
-
-      {/* BOTÕES DE OPÇÃO - LADO A LADO E MAIS COMPACTOS */}
-      <div className="grid grid-cols-2 gap-3 md:gap-6 w-full max-w-3xl px-4">
-        <button 
-          onClick={() => setView('mural')}
-          className="group relative bg-slate-900 border-2 md:border-4 border-slate-800 rounded-[24px] md:rounded-[48px] p-4 md:p-8 flex flex-col items-center gap-3 md:gap-6 transition-all hover:border-indigo-500 hover:bg-slate-800 active:scale-95 shadow-2xl"
-        >
-          <div className="w-12 h-12 md:w-20 md:h-20 bg-indigo-600 rounded-xl md:rounded-[28px] flex items-center justify-center text-2xl md:text-4xl shadow-xl shadow-indigo-900/40 group-hover:scale-110 transition-transform">
-            📢
-          </div>
-          <div className="text-center">
-            <h2 className="text-base md:text-2xl font-black uppercase tracking-tight text-white mb-0.5">Mural</h2>
-            <p className="text-slate-500 font-bold uppercase tracking-widest text-[7px] md:text-[10px]">Avisos e Alertas</p>
-          </div>
-          {unreadCount > 0 && (
-            <div className="absolute -top-2 -right-2 w-7 h-7 md:w-10 md:h-10 bg-rose-600 text-white rounded-full flex items-center justify-center text-[10px] md:text-base font-black shadow-xl animate-bounce">
-              {unreadCount}
-            </div>
-          )}
-        </button>
-
-        <button 
-          onClick={() => setView('tarefas')}
-          className="group relative bg-slate-900 border-2 md:border-4 border-slate-800 rounded-[24px] md:rounded-[48px] p-4 md:p-8 flex flex-col items-center gap-3 md:gap-6 transition-all hover:border-emerald-500 hover:bg-slate-800 active:scale-95 shadow-2xl"
-        >
-          <div className="w-12 h-12 md:w-20 md:h-20 bg-emerald-600 rounded-xl md:rounded-[28px] flex items-center justify-center text-2xl md:text-4xl shadow-xl shadow-emerald-900/40 group-hover:scale-110 transition-transform">
-            ✅
-          </div>
-          <div className="text-center">
-            <h2 className="text-base md:text-2xl font-black uppercase tracking-tight text-white mb-0.5">Tarefas</h2>
-            <p className="text-slate-500 font-bold uppercase tracking-widest text-[7px] md:text-[10px]">Agenda do Dia</p>
-          </div>
-          {activeTasks.length > 0 && (
-            <div className="absolute -top-2 -right-2 w-7 h-7 md:w-10 md:h-10 bg-emerald-500 text-white rounded-full flex items-center justify-center text-[10px] md:text-base font-black shadow-xl">
-              {activeTasks.length}
-            </div>
-          )}
-        </button>
-      </div>
-    </div>
-  );
-
-  const renderMural = () => (
-    <div className="flex-1 flex flex-col overflow-hidden p-4 md:p-10 gap-8">
-      <div className="flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-6">
-          <button onClick={() => setView('home')} className="w-12 h-12 md:w-16 md:h-16 bg-slate-800 rounded-2xl flex items-center justify-center text-xl md:text-2xl hover:bg-slate-700 transition-all">⬅️</button>
-          <h2 className="text-2xl md:text-4xl font-black uppercase tracking-tight">Mural de Avisos</h2>
-        </div>
-        <div className="hidden md:block text-right">
-          <p className="text-emerald-500 font-black uppercase tracking-widest text-xs">Total: {avisos.length}</p>
-        </div>
-      </div>
-
-      <div className="flex-1 overflow-y-auto custom-scrollbar dark-scrollbar pr-2 md:pr-4">
-        {avisos.length === 0 ? (
-          <div className="h-full flex items-center justify-center">
-            <div className="bg-slate-900/30 border border-slate-800 rounded-[48px] p-20 text-center max-w-2xl">
-              <p className="text-slate-600 font-black uppercase tracking-widest text-2xl">Nenhum aviso no mural</p>
-            </div>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8 pb-10">
-            {avisos.map(aviso => {
-              const isConfirmed = aviso.confirmacoes?.some(c => c.user === 'Operador');
-              return (
-                <div 
-                  key={aviso.id} 
-                  onClick={() => setViewingAviso(aviso)}
-                  className={`p-6 md:p-8 rounded-[32px] md:rounded-[48px] border-2 md:border-4 transition-all cursor-pointer active:scale-[0.98] ${
-                    aviso.prioridade === 'urgente' 
-                      ? 'bg-rose-600 border-rose-500 shadow-2xl shadow-rose-900/20' 
-                      : 'bg-slate-900 border-slate-800'
-                  } ${isConfirmed ? 'opacity-40 grayscale-[0.5]' : ''}`}
-                >
-                  <div className="flex justify-between items-start mb-4">
-                    <span className={`px-4 py-1.5 rounded-full text-[8px] md:text-xs font-black uppercase tracking-widest ${
-                      aviso.prioridade === 'urgente' ? 'bg-white text-rose-600' : 'bg-slate-800 text-slate-400'
-                    }`}>
-                      {aviso.prioridade}
-                    </span>
-                    <span className="text-[10px] md:text-sm font-black uppercase opacity-50">
-                      {new Date(aviso.created_at!).toLocaleDateString('pt-BR')}
-                    </span>
-                  </div>
-                  <h3 className="text-xl md:text-3xl font-black uppercase mb-4 leading-tight line-clamp-2">{aviso.titulo}</h3>
-                  <p className={`text-sm md:text-xl font-medium leading-relaxed mb-6 line-clamp-3 ${
-                    aviso.prioridade === 'urgente' ? 'text-white' : 'text-slate-400'
-                  }`}>
-                    {aviso.conteudo}
-                  </p>
-                  
-                  <div className="flex justify-end">
-                    {isConfirmed ? (
-                      <div className="flex items-center gap-2 text-emerald-400 font-black uppercase text-xs md:text-lg tracking-widest">
-                        <span className="text-xl md:text-3xl">✓</span> Ciente
-                      </div>
-                    ) : (
-                      <div className="text-[10px] md:text-sm font-black uppercase text-white/50">Toque para ler</div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-
-  const renderTarefas = () => (
-    <div className="flex-1 flex flex-col overflow-hidden p-4 md:p-10 gap-8">
-      <div className="flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-6">
-          <button onClick={() => setView('home')} className="w-12 h-12 md:w-16 md:h-16 bg-slate-800 rounded-2xl flex items-center justify-center text-xl md:text-2xl hover:bg-slate-700 transition-all">⬅️</button>
-          <h2 className="text-2xl md:text-4xl font-black uppercase tracking-tight">Tarefas do Dia</h2>
-        </div>
-        <div className="hidden md:block text-right">
-          <p className="text-emerald-500 font-black uppercase tracking-widest text-xs">Pendentes: {activeTasks.length}</p>
-        </div>
-      </div>
-
-      <div className="flex-1 overflow-y-auto custom-scrollbar dark-scrollbar pr-2 md:pr-4">
-        {activeTasks.length === 0 ? (
-          <div className="h-full flex items-center justify-center">
-            <div className="bg-emerald-900/10 border border-emerald-900/20 rounded-[60px] p-20 text-center max-w-2xl">
-              <span className="text-9xl block mb-8">🌟</span>
-              <h3 className="text-4xl font-black text-emerald-500 uppercase">Tudo Concluído!</h3>
-              <p className="text-slate-500 font-bold uppercase tracking-widest mt-6 text-xl">Bom trabalho para hoje.</p>
-            </div>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8 pb-10">
-            {activeTasks.map(task => {
-              const isOverdue = task.dataPlanejada.split('T')[0] < today;
-              return (
-                <div 
-                  key={task.id} 
-                  onClick={() => setCompletingTask(task)}
-                  className={`p-6 md:p-8 rounded-[32px] md:rounded-[48px] border-2 md:border-4 transition-all active:scale-[0.98] cursor-pointer ${
-                    isOverdue ? 'bg-rose-900/20 border-rose-900/40' : 'bg-slate-900 border-slate-800'
-                  }`}
-                >
-                  <div className="flex justify-between items-center mb-4">
-                    <span className={`px-4 py-1.5 rounded-full text-[8px] md:text-xs font-black uppercase tracking-widest ${
-                      isOverdue ? 'bg-rose-600 text-white' : 'bg-emerald-600 text-white'
-                    }`}>
-                      {isOverdue ? 'Atrasado' : 'Hoje'}
-                    </span>
-                    <span className="text-xl md:text-3xl font-black text-slate-500 tabular-nums">{task.horaPlanejada}h</span>
-                  </div>
-                  
-                  <h3 className="text-xl md:text-3xl font-black uppercase leading-tight mb-4 line-clamp-2">{task.titulo}</h3>
-                  
-                  <div className="flex justify-between items-center mt-auto">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 md:w-10 md:h-10 bg-slate-800 rounded-xl flex items-center justify-center text-lg">👥</div>
-                      <p className="text-[10px] md:text-sm font-black text-slate-500 uppercase tracking-widest">{task.grupoId || 'Geral'}</p>
-                    </div>
-                    <div className="flex gap-2 md:gap-4">
-                      {task.protocolo && task.protocolo !== ProtocoloManejo.NENHUM && onStartProtocol && (
-                        <div className="px-3 py-1.5 bg-indigo-600 text-white rounded-lg font-black uppercase text-[8px] md:text-[10px] shadow-lg animate-pulse">
-                          Protocolo
-                        </div>
-                      )}
-                      <div className="w-10 h-10 md:w-12 md:h-12 bg-emerald-600 text-white rounded-xl flex items-center justify-center text-xl md:text-2xl shadow-xl shadow-emerald-900/20">✓</div>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-
   return (
     <div 
-      className="h-screen bg-slate-950 text-slate-100 flex flex-col overflow-hidden"
+      className="h-screen bg-[#05070a] text-slate-100 flex flex-col overflow-hidden font-sans"
       onClick={() => !audioEnabled && setAudioEnabled(true)}
     >
       {/* ALERTA DE ÁUDIO DESATIVADO */}
       {!audioEnabled && hasUrgentUnconfirmed && (
-        <div className="fixed top-0 left-0 w-full bg-rose-600 text-white p-2 text-center z-[2000] font-black uppercase text-xs animate-pulse">
-          Toque em qualquer lugar para ativar o alerta sonoro de urgência
+        <div className="fixed top-0 left-0 w-full bg-rose-600 text-white p-2 text-center z-[2000] font-black uppercase text-[10px] animate-pulse">
+          Toque em qualquer lugar para ativar o alerta sonoro
         </div>
       )}
 
-      {/* HEADER COMPACTO */}
-      <header className="bg-slate-900/50 border-b border-slate-800 p-4 md:p-6 flex justify-between items-center shrink-0 relative z-50">
-        <div className="flex items-center gap-4 md:gap-6">
-          <div className="w-12 h-12 md:w-16 md:h-16 bg-emerald-600 rounded-[16px] md:rounded-[20px] flex items-center justify-center text-2xl md:text-3xl shadow-2xl shadow-emerald-900/20">🐑</div>
-          <div>
-            <h1 className="text-xl md:text-4xl font-black uppercase tracking-tighter leading-none">Quadro de Avisos</h1>
-            <p className="text-emerald-500 text-[10px] md:text-sm font-black uppercase tracking-[0.2em] mt-1">Operação de Campo</p>
+      {/* HEADER ESTILO IMAGEM */}
+      <header className="bg-[#05070a] p-4 md:p-6 flex justify-between items-start shrink-0 z-50">
+        <div className="flex items-center gap-4">
+          <div className="w-10 h-10 md:w-12 md:h-12 bg-[#10b981] rounded-xl flex items-center justify-center text-2xl shadow-lg shadow-emerald-900/20">
+            <span className="filter brightness-0 invert">🐑</span>
+          </div>
+          <div className="flex flex-col">
+            <h1 className="text-xl md:text-3xl font-black uppercase tracking-tight leading-none text-white">Quadro de Avisos</h1>
+            <p className="text-[#10b981] text-[10px] md:text-sm font-black uppercase tracking-[0.15em] mt-0.5">Operação de Campo</p>
           </div>
         </div>
-        <div className="flex items-center gap-4 md:gap-6">
-          {view !== 'home' && (
-            <div className="hidden sm:block text-right">
-              <p className="text-2xl md:text-4xl font-black tracking-tighter text-white tabular-nums leading-none">
-                {currentTime.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-              </p>
-            </div>
-          )}
+        
+        <div className="flex items-center gap-4">
           <button 
             onClick={handleLogout}
-            className="w-10 h-10 md:w-12 md:h-12 bg-slate-800 hover:bg-rose-600 text-slate-400 hover:text-white rounded-xl flex items-center justify-center text-lg md:text-xl transition-all shadow-xl active:scale-90"
-            title="Sair / Trocar Usuário"
+            className="flex items-center gap-3 px-6 py-3 bg-rose-600 text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-lg shadow-rose-900/40 active:scale-95 transition-all border border-rose-500/50"
           >
-            🚪
+            <span>SAIR</span>
+            <span className="text-lg">🚪</span>
           </button>
         </div>
       </header>
 
+      {/* RELÓGIO CENTRALIZADO ESTILO IMAGEM */}
+      <div className="flex flex-col items-center justify-center py-2 shrink-0">
+        <h2 className="text-4xl md:text-6xl font-black tracking-tighter text-white tabular-nums leading-none drop-shadow-[0_0_20px_rgba(255,255,255,0.1)]">
+          {currentTime.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+        </h2>
+        <p className="text-sm md:text-lg font-black text-[#10b981] uppercase tracking-[0.3em] mt-1">
+          {formatBrazilianDate(today)}
+        </p>
+      </div>
+
       {/* CONTEÚDO DINÂMICO */}
-      <main className="flex-1 flex flex-col overflow-hidden min-h-0">
-        {view === 'home' && renderHome()}
-        {view === 'mural' && renderMural()}
-        {view === 'tarefas' && renderTarefas()}
+      <main className="flex-1 flex flex-col overflow-hidden p-4 md:p-6 pt-2">
+        {activeView === 'none' ? (
+          <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-6 items-center max-w-5xl mx-auto w-full">
+            {/* BOTÃO MURAL */}
+            <button 
+              onClick={() => setActiveView('mural')}
+              className="group relative h-[200px] md:h-[300px] bg-[#0a0f18]/60 border-4 border-slate-800/50 rounded-[48px] overflow-hidden shadow-2xl transition-all hover:border-indigo-500/50 hover:bg-indigo-950/10 active:scale-95 flex flex-col items-center justify-center gap-4"
+            >
+              <div className="w-16 h-16 md:w-20 md:h-20 bg-indigo-600 rounded-[24px] flex items-center justify-center text-3xl md:text-4xl shadow-2xl shadow-indigo-900/40 group-hover:scale-110 transition-transform">
+                📢
+              </div>
+              <div className="text-center">
+                <h2 className="text-xl md:text-2xl font-black uppercase tracking-tight text-white mb-1">Mural de Avisos</h2>
+                <p className="text-indigo-400 font-black uppercase tracking-widest text-[10px] md:text-sm">e Alertas do Gerente</p>
+              </div>
+              {unreadCount > 0 && (
+                <div className="absolute top-6 right-6 bg-rose-600 text-white text-sm font-black px-4 py-1.5 rounded-full animate-bounce shadow-xl">
+                  {unreadCount} NOVOS
+                </div>
+              )}
+            </button>
+
+            {/* BOTÃO TAREFAS */}
+            <button 
+              onClick={() => setActiveView('tarefas')}
+              className="group relative h-[200px] md:h-[300px] bg-[#0a0f18]/60 border-4 border-slate-800/50 rounded-[48px] overflow-hidden shadow-2xl transition-all hover:border-emerald-500/50 hover:bg-emerald-950/10 active:scale-95 flex flex-col items-center justify-center gap-4"
+            >
+              <div className="w-16 h-16 md:w-20 md:h-20 bg-[#10b981] rounded-[24px] flex items-center justify-center text-3xl md:text-4xl shadow-2xl shadow-emerald-900/40 group-hover:scale-110 transition-transform">
+                ✅
+              </div>
+              <div className="text-center">
+                <h2 className="text-xl md:text-2xl font-black uppercase tracking-tight text-white mb-1">Tarefas Agenda</h2>
+                <p className="text-[#10b981] font-black uppercase tracking-widest text-[10px] md:text-sm">do Dia de Trabalho</p>
+              </div>
+              <div className="absolute top-6 right-6 bg-emerald-600/20 text-[#10b981] text-sm font-black px-4 py-1.5 rounded-full border-2 border-emerald-500/20">
+                {activeTasks.length} PENDENTES
+              </div>
+            </button>
+          </div>
+        ) : (
+          <div className="flex-1 flex flex-col max-w-6xl mx-auto w-full animate-in fade-in slide-in-from-bottom-4 duration-500 overflow-hidden">
+            {/* CABEÇALHO DA LISTA COM BOTÃO VOLTAR */}
+            <div className="flex items-center justify-between mb-4 shrink-0">
+              <button 
+                onClick={() => setActiveView('none')}
+                className="flex items-center gap-2 px-4 py-2 bg-slate-800 text-white rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-slate-700 transition-all active:scale-95"
+              >
+                <span>⬅️</span>
+                <span>Voltar</span>
+              </button>
+              
+              <div className="flex items-center gap-3">
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-lg shadow-lg ${
+                  activeView === 'mural' ? 'bg-indigo-600' : 'bg-[#10b981]'
+                }`}>
+                  {activeView === 'mural' ? '📢' : '✅'}
+                </div>
+                <h2 className="text-lg md:text-xl font-black uppercase tracking-tight">
+                  {activeView === 'mural' ? 'Mural de Avisos' : 'Tarefas do Dia'}
+                </h2>
+              </div>
+            </div>
+
+            {/* LISTAGEM ESPECÍFICA */}
+            <div className="flex-1 bg-[#0a0f18]/60 border-2 border-slate-800/50 rounded-[32px] overflow-hidden shadow-2xl flex flex-col">
+              <div className="flex-1 overflow-y-auto custom-scrollbar dark-scrollbar p-4 md:p-6 space-y-4">
+                {activeView === 'mural' ? (
+                  avisos.length === 0 ? (
+                    <div className="h-full flex flex-col items-center justify-center opacity-10">
+                      <span className="text-6xl mb-4">📭</span>
+                      <p className="font-black uppercase tracking-widest text-lg">Nenhum aviso</p>
+                    </div>
+                  ) : (
+                    avisos.map(aviso => {
+                      const isConfirmed = aviso.confirmacoes?.some(c => c.user === 'Operador');
+                      return (
+                        <div 
+                          key={aviso.id} 
+                          onClick={() => setViewingAviso(aviso)}
+                          className={`p-5 rounded-[24px] border-2 transition-all cursor-pointer active:scale-[0.98] ${
+                            aviso.prioridade === 'urgente' 
+                              ? 'bg-rose-600/10 border-rose-500/30 shadow-lg' 
+                              : 'bg-slate-900/40 border-slate-800/50'
+                          } ${isConfirmed ? 'opacity-30 grayscale-[0.5]' : 'hover:border-indigo-500/50 hover:bg-slate-800/40'}`}
+                        >
+                          <div className="flex justify-between items-start mb-2">
+                            <span className={`px-3 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest ${
+                              aviso.prioridade === 'urgente' ? 'bg-rose-600 text-white' : 'bg-slate-800 text-slate-500'
+                            }`}>
+                              {aviso.prioridade}
+                            </span>
+                            <span className="text-[10px] font-bold text-slate-600 uppercase">
+                              {new Date(aviso.created_at!).toLocaleDateString('pt-BR')}
+                            </span>
+                          </div>
+                          <h3 className="text-lg md:text-xl font-black uppercase mb-2 text-white">{aviso.titulo}</h3>
+                          <p className="text-sm text-slate-400 line-clamp-2 leading-relaxed font-medium">
+                            {aviso.conteudo}
+                          </p>
+                        </div>
+                      );
+                    })
+                  )
+                ) : (
+                  activeTasks.length === 0 ? (
+                    <div className="h-full flex flex-col items-center justify-center opacity-10">
+                      <span className="text-6xl mb-4">🌟</span>
+                      <p className="font-black uppercase tracking-widest text-lg">Tudo concluído</p>
+                    </div>
+                  ) : (
+                    activeTasks.map(task => {
+                      const isOverdue = task.dataPlanejada.split('T')[0] < today;
+                      return (
+                        <div 
+                          key={task.id} 
+                          onClick={() => {
+                            if (task.protocolo && task.protocolo !== ProtocoloManejo.NENHUM) {
+                              onStartProtocol?.(task);
+                            } else {
+                              setCompletingTask(task);
+                            }
+                          }}
+                          className={`p-5 rounded-[24px] border-2 transition-all active:scale-[0.98] cursor-pointer ${
+                            isOverdue ? 'bg-rose-900/10 border-rose-900/30' : 'bg-slate-900/40 border-slate-800/50'
+                          } hover:border-emerald-500/50 hover:bg-slate-800/40`}
+                        >
+                          <div className="flex justify-between items-center mb-3">
+                            <div className="flex items-center gap-3">
+                              <span className={`w-3 h-3 rounded-full ${isOverdue ? 'bg-rose-500 animate-pulse' : 'bg-[#10b981]'}`}></span>
+                              <span className="text-xl font-black text-white tabular-nums">{task.horaPlanejada}h</span>
+                            </div>
+                            {task.protocolo && task.protocolo !== ProtocoloManejo.NENHUM && (
+                              <span className="text-[10px] font-black bg-indigo-600 px-3 py-1 rounded-lg text-white uppercase animate-pulse shadow-lg shadow-indigo-900/20">
+                                Protocolo
+                              </span>
+                            )}
+                          </div>
+                          
+                          <h3 className="text-lg md:text-xl font-black uppercase leading-tight mb-3 text-white">{task.titulo}</h3>
+                          
+                          <div className="flex justify-between items-center">
+                            <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">
+                              {task.grupoId || 'Geral'}
+                            </span>
+                            <div className="w-10 h-10 bg-emerald-600/20 text-[#10b981] rounded-xl flex items-center justify-center text-xl border border-emerald-500/20">
+                              ✓
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </main>
 
-      {/* FOOTER - STATUS DO SISTEMA */}
-      <footer className="p-4 md:p-8 border-t border-slate-800 flex justify-center items-center bg-slate-900/30 shrink-0 relative z-50">
-        <div className="flex items-center gap-4">
-          <div className="w-2 h-2 md:w-3 md:h-3 bg-emerald-500 rounded-full animate-pulse"></div>
-          <p className="text-[8px] md:text-xs font-black text-slate-500 uppercase tracking-widest">Sistema OviManager v4.0 • Conectado à Nuvem</p>
+      {/* FOOTER ESTILO IMAGEM */}
+      <footer className="p-6 border-t border-slate-800/30 flex justify-center items-center bg-[#05070a] shrink-0">
+        <div className="flex items-center gap-3">
+          <div className="w-2 h-2 bg-[#10b981] rounded-full animate-pulse"></div>
+          <p className="text-[10px] font-black text-slate-600 uppercase tracking-[0.25em]">Sistema OviManager v4.0 • Conectado à Nuvem</p>
         </div>
       </footer>
 

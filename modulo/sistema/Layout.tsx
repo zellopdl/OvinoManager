@@ -25,6 +25,7 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab, head
   }, [isDesktopCollapsed]);
 
   const menuItems = [
+    { id: 'noticeboard', label: 'Painel', icon: '📋', category: 'Principal' },
     { id: 'dashboard', label: 'Início', icon: '📊', category: 'Principal' },
     { id: 'charts', label: 'Análises', icon: '📈', category: 'Principal' },
     { id: 'sheep', label: 'Rebanho', icon: '🐑', category: 'Principal' },
@@ -41,7 +42,9 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab, head
     { id: 'settings', label: 'Ajustes', icon: '⚙️', category: 'Sistema' },
   ];
 
-  const filteredMenuItems = isOperator ? menuItems.filter(item => item.id === activeTab) : menuItems;
+  const filteredMenuItems = isOperator 
+    ? menuItems.filter(item => item.id === activeTab) 
+    : menuItems.filter(item => item.id !== 'noticeboard');
 
   const bottomTabs = filteredMenuItems.filter(item => ['dashboard', 'sheep', 'manejo', 'guia', 'weight', 'ecc', 'famacha', 'repro'].includes(item.id));
 
@@ -66,7 +69,7 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab, head
   return (
     <div className="flex h-safe-screen w-full bg-slate-50 overflow-hidden flex-col md:flex-row">
       {/* Sidebar - Desktop */}
-      <aside className={`hidden md:flex flex-col bg-slate-900 text-white shadow-xl z-20 transition-all duration-300 ${isDesktopCollapsed ? 'w-20' : 'w-64'}`}>
+      <aside className={`hidden ${isOperator ? '' : 'md:flex'} flex-col bg-slate-900 text-white shadow-xl z-20 transition-all duration-300 ${isDesktopCollapsed ? 'w-20' : 'w-64'}`}>
         <div className={`p-5 border-b border-slate-800 flex items-center ${isDesktopCollapsed ? 'justify-center' : 'gap-3'}`}>
           <div className="w-8 h-8 bg-emerald-500 rounded-lg flex items-center justify-center text-lg shadow-lg shrink-0">🐑</div>
           {!isDesktopCollapsed && <h1 className="text-lg font-black tracking-tight">OviManager</h1>}
@@ -117,6 +120,13 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab, head
           </div>
           <div className="flex items-center gap-1.5 md:gap-2 scale-90 md:scale-100 origin-right">
             {headerExtra}
+            <button 
+              onClick={handleLogout}
+              className="ml-2 w-10 h-10 flex items-center justify-center bg-rose-50 text-rose-600 rounded-xl hover:bg-rose-100 transition-colors"
+              title="Sair"
+            >
+              🚪
+            </button>
           </div>
         </header>
 
@@ -129,7 +139,7 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab, head
       </div>
 
       {/* Mobile Bottom Nav - Fixo */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-lg border-t border-slate-200 flex justify-around items-center h-16 pb-safe z-50 shadow-[0_-4px_15px_rgba(0,0,0,0.05)] rounded-t-[24px]">
+      <nav className={`${isOperator ? 'hidden' : 'md:hidden'} fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-lg border-t border-slate-200 flex justify-around items-center h-16 pb-safe z-50 shadow-[0_-4px_15px_rgba(0,0,0,0.05)] rounded-t-[24px]`}>
         {bottomTabs.map((item) => (
           <button key={item.id} onClick={() => setActiveTab(item.id)} className={`flex flex-col items-center justify-center gap-1 flex-1 h-full transition-all ${activeTab === item.id ? 'text-emerald-600' : 'text-slate-400'}`}>
             <span className={`text-xl ${activeTab === item.id ? 'scale-110' : ''}`}>{item.icon}</span>

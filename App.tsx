@@ -18,10 +18,11 @@ import ReproductionManager from './modulo/reproducao/ReproductionManager.tsx';
 import Login from './modulo/sistema/Login.tsx';
 import NoticeBoard from './modulo/operacional/NoticeBoard.tsx';
 
-import { Sheep, Breed, Supplier, Group, Paddock, BreedingPlan, Manejo, ProtocoloManejo, Perfil } from './types.ts';
+import { Sheep, Breed, Supplier, Group, Paddock, BreedingPlan, Manejo, ProtocoloManejo, Perfil, StatusManejo } from './types.ts';
 import { sheepService } from './modulo/rebanho/sheepService.ts';
 import { entityService } from './modulo/cadastros/entityService.ts';
 import { breedingPlanService } from './modulo/reproducao/breedingPlanService.ts';
+import { manejoService } from './modulo/manejo/manejoService.ts';
 import { getSheepInsight } from './modulo/dashboard/geminiService.ts';
 import { supabase, isSupabaseConfigured } from './lib/supabase.ts';
 import { SUPABASE_SCHEMA_SQL } from './constants.tsx';
@@ -33,6 +34,7 @@ const App: React.FC = () => {
   const [view, setView] = useState<'list' | 'form'>('list');
   const [editingSheep, setEditingSheep] = useState<Sheep | undefined>(undefined);
   const [loading, setLoading] = useState(true);
+  const [perfilLoading, setPerfilLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [activeProtocolTask, setActiveProtocolTask] = useState<Manejo | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'online' | 'local'>('connecting');
@@ -71,20 +73,39 @@ const App: React.FC = () => {
   const [groups, setGroups] = useState<Group[]>([]);
   const [paddocks, setPaddocks] = useState<Paddock[]>([]);
   const [breedingPlans, setBreedingPlans] = useState<BreedingPlan[]>([]);
+  const [manejos, setManejos] = useState<Manejo[]>([]);
   const [perfil, setPerfil] = useState<Perfil | null>(null);
 
   useEffect(() => {
     if (session?.user?.id) {
+      setPerfilLoading(true);
+      const timeoutId = setTimeout(() => {
+        console.warn("Perfil loading timeout");
+        setPerfilLoading(false);
+      }, 5000);
+
       supabase
         .from('perfis')
         .select('*')
         .eq('id', session.user.id)
         .single()
         .then(({ data }: { data: any }) => {
-          if (data) setPerfil(data);
+          clearTimeout(timeoutId);
+          if (data) {
+            setPerfil(data);
+            if (data.role === 'operador') {
+              setActiveTab('noticeboard');
+            }
+          }
+          setPerfilLoading(false);
+        })
+        .catch(() => {
+          clearTimeout(timeoutId);
+          setPerfilLoading(false);
         });
     } else {
       setPerfil(null);
+      setPerfilLoading(false);
     }
   }, [session]);
 
@@ -93,10 +114,13 @@ const App: React.FC = () => {
       supabase.auth.getSession().then(({ data: { session } }: { data: { session: any } }) => {
         setSession(session);
         setAuthLoading(false);
-      });
+      }).catch(() => setAuthLoading(false));
+
       const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: any, session: any) => {
         setSession(session);
+        setAuthLoading(false);
       });
+
       return () => subscription.unsubscribe();
     } else {
       setAuthLoading(false);
@@ -111,13 +135,14 @@ const App: React.FC = () => {
       else setConnectionStatus('local');
       
       // Carregamento em paralelo para máxima velocidade
-      const [sData, bData, supData, gData, pData, bpData] = await Promise.all([
+      const [sData, bData, supData, gData, pData, bpData, mData] = await Promise.all([
         sheepService.getAll().catch(() => []),
         entityService.getAll('racas').catch(() => []),
         entityService.getAll('fornecedores').catch(() => []),
         entityService.getAll('grupos').catch(() => []),
         entityService.getAll('piquetes').catch(() => []),
-        breedingPlanService.getAll().catch(() => [])
+        breedingPlanService.getAll().catch(() => []),
+        manejoService.getAll().catch(() => [])
       ]);
       
       setSheep(sData || []); 
@@ -126,6 +151,7 @@ const App: React.FC = () => {
       setGroups(gData || []); 
       setPaddocks((pData as Paddock[]) || []);
       setBreedingPlans(bpData || []);
+      setManejos(mData || []);
       
       if (!forceLocal && isSupabaseConfigured) setConnectionStatus('online');
     } catch (err) {
@@ -138,6 +164,20 @@ const App: React.FC = () => {
   useEffect(() => { 
     if (session || !isSupabaseConfigured) {
       loadInitialData(); 
+    }
+
+    // Inscrição em tempo real para manejos (importante para liberação dinâmica de módulos)
+    if (isSupabaseConfigured) {
+      const channel = supabase
+        .channel('app_manejos_sync')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'manejos' }, () => {
+          loadInitialData();
+        })
+        .subscribe();
+      
+      return () => {
+        supabase.removeChannel(channel);
+      };
     }
   }, [loadInitialData, session]);
 
@@ -241,6 +281,13 @@ const App: React.FC = () => {
             existingSheep={safeSheep} />
         );
       case 'racas': return <EntityManager title="Raças" tableName="racas" icon="🏷️" initialData={breeds} onRefresh={loadInitialData} sheep={safeSheep} />;
+      case 'noticeboard': return <NoticeBoard onStartProtocol={(task) => {
+        setActiveProtocolTask(task);
+        if (task.protocolo === ProtocoloManejo.PESAGEM) setActiveTab('weight');
+        else if (task.protocolo === ProtocoloManejo.FAMACHA) setActiveTab('famacha');
+        else if (task.protocolo === ProtocoloManejo.ECC) setActiveTab('ecc');
+        else if (task.protocolo === ProtocoloManejo.REPRODUCAO) setActiveTab('repro');
+      }} />;
       case 'grupos': return <EntityManager title="Grupos" tableName="grupos" icon="👥" initialData={groups} onRefresh={loadInitialData} sheep={safeSheep} />;
       case 'piquetes': return <PaddockManager initialData={paddocks} onRefresh={loadInitialData} sheep={safeSheep} />;
       case 'suppliers': return <SupplierManager initialData={suppliers} onRefresh={loadInitialData} sheep={safeSheep} />;
@@ -267,19 +314,38 @@ const App: React.FC = () => {
     }
   };
 
+  const isOperator = perfil ? perfil.role === 'operador' : session?.user?.email === 'operador@ovimanager.com';
+
+  // 1. Carregando Autenticação
   if (authLoading) return (
     <div className="min-h-screen bg-slate-950 flex items-center justify-center">
       <div className="text-center">
         <div className="w-16 h-16 border-4 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin mx-auto mb-4"></div>
-        <p className="text-emerald-500 font-black uppercase tracking-widest text-xs animate-pulse">Verificando Credenciais...</p>
+        <p className="text-emerald-500 font-black uppercase tracking-widest text-xs animate-pulse">Iniciando Sistema...</p>
       </div>
     </div>
   );
+
+  // 2. Sem Sessão -> Tela de Login
   if (!session && isSupabaseConfigured) return <Login />;
 
-  // VERIFICAÇÃO DE PERFIL OPERADOR (QUADRO DE AVISOS)
-  const isOperator = perfil ? perfil.role === 'operador' : session?.user?.email === 'operador@ovimanager.com';
+  // 3. Com Sessão, mas carregando Perfil
+  if (session && perfilLoading) return (
+    <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+      <div className="text-center">
+        <div className="w-16 h-16 border-4 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin mx-auto mb-4"></div>
+        <p className="text-emerald-500 font-black uppercase tracking-widest text-xs animate-pulse">Sincronizando Perfil...</p>
+        <button 
+          onClick={handleLogout}
+          className="mt-8 px-6 py-2 bg-rose-600/20 text-rose-500 rounded-xl font-black uppercase text-[10px] tracking-widest border border-rose-500/30"
+        >
+          Cancelar e Sair
+        </button>
+      </div>
+    </div>
+  );
 
+  // Se for operador e não estiver em um protocolo, mostra o Quadro de Avisos em tela cheia
   if (isOperator && !activeProtocolTask) {
     return <NoticeBoard key="operator-notice-board" onStartProtocol={(task) => {
       setActiveProtocolTask(task);
@@ -295,10 +361,14 @@ const App: React.FC = () => {
     <div className="flex items-center gap-4">
       {isOperator && activeProtocolTask && (
         <button 
-          onClick={() => setActiveProtocolTask(null)}
-          className="px-4 py-2 bg-rose-600 text-white rounded-xl font-black uppercase text-[10px] shadow-lg animate-pulse"
+          onClick={() => {
+            setActiveProtocolTask(null);
+            setActiveTab('noticeboard');
+          }}
+          className="px-6 py-2.5 bg-rose-600 text-white rounded-2xl font-black uppercase text-[10px] shadow-xl animate-pulse flex items-center gap-2 hover:bg-rose-700 transition-all active:scale-95 border-2 border-rose-500/50"
         >
-          ← Voltar ao Mural
+          <span>⬅️</span>
+          <span>Finalizar e Voltar ao Mural</span>
         </button>
       )}
       {HeaderActions}
@@ -306,7 +376,13 @@ const App: React.FC = () => {
   );
 
   return (
-    <Layout activeTab={activeTab} setActiveTab={setActiveTab} headerExtra={HeaderExtra} isOperator={isOperator} activeProtocolTask={activeProtocolTask}>
+    <Layout 
+      activeTab={activeTab} 
+      setActiveTab={setActiveTab} 
+      headerExtra={HeaderExtra} 
+      isOperator={isOperator} 
+      activeProtocolTask={activeProtocolTask}
+    >
       <div className="min-h-[80vh] flex flex-col">{renderContent()}</div>
       {analysisSheep && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
