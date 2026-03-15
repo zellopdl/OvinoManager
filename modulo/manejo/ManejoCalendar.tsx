@@ -139,9 +139,9 @@ const ManejoCalendar: React.FC<ManejoCalendarProps> = ({ manejos, onEdit, onDele
         <button onClick={() => setSelectedDate(today)} className="text-[9px] font-black uppercase bg-indigo-50 text-indigo-600 px-3 py-1.5 rounded-lg active:scale-95 transition-all">Ir para Hoje</button>
       </div>
 
-      <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
+      <div className="flex-1 flex flex-col xl:flex-row overflow-hidden">
         {/* CALENDÁRIO GRID */}
-        <div className="w-full md:w-[450px] p-4 md:p-6 bg-white border-r border-slate-100 shrink-0">
+        <div className="w-full xl:w-[450px] p-4 md:p-6 bg-white border-r border-slate-100 shrink-0">
           <div className="grid grid-cols-7 mb-2">
             {dayLabels.map((l, i) => <div key={i} className="text-center text-[10px] font-black text-slate-400 py-2">{l}</div>)}
           </div>
@@ -177,7 +177,7 @@ const ManejoCalendar: React.FC<ManejoCalendarProps> = ({ manejos, onEdit, onDele
         </div>
 
         {/* AGENDA DO DIA (FOCO MOBILE) */}
-        <div className="flex-1 bg-slate-50 md:bg-white overflow-y-auto custom-scrollbar p-5 md:p-8">
+        <div className="flex-1 min-w-0 bg-slate-50 md:bg-white overflow-y-auto custom-scrollbar p-5 md:p-8">
            <div className="flex justify-between items-center mb-6">
               <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Agenda: {formatBrazilianDate(selectedDate)}</h4>
               <span className="px-2 py-0.5 bg-slate-200 text-slate-600 rounded text-[9px] font-black">{tasksForSelectedDay.length} TAREFAS</span>

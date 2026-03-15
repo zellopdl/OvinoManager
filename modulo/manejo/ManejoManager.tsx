@@ -237,14 +237,14 @@ const ManejoManager: React.FC<ManejoManagerProps> = ({ sheep, paddocks, groups, 
            </div>
         </div>
         <div className="flex justify-between items-center">
-          <div className="flex-1 cursor-pointer" onClick={() => isDone ? setViewingTask(task) : setCompletingTask(task)}>
+          <div className="flex-1 min-w-0 cursor-pointer" onClick={() => isDone ? setViewingTask(task) : setCompletingTask(task)}>
             <div className="flex items-center gap-2">
-              <h4 className={`font-black uppercase text-xs ${isDone ? 'text-emerald-800' : 'text-slate-800'}`}>{task.titulo}</h4>
+              <h4 className={`font-black uppercase text-xs truncate ${isDone ? 'text-emerald-800' : 'text-slate-800'}`}>{task.titulo}</h4>
               {isDone && task.observacoes && (
-                <span className="w-2 h-2 bg-amber-500 rounded-full animate-pulse" title="Observação do Operador"></span>
+                <span className="w-2 h-2 bg-amber-500 rounded-full animate-pulse shrink-0" title="Observação do Operador"></span>
               )}
             </div>
-            <p className={`text-[9px] font-bold uppercase mt-0.5 ${isUrgent ? 'text-rose-500' : 'text-slate-400'}`}>{isDone ? `Por: ${task.colaborador}` : isUrgent ? `Desde: ${formatBrazilianDate(task.dataPlanejada)}` : `Hoje às ${task.horaPlanejada}h`}</p>
+            <p className={`text-[9px] font-bold uppercase mt-0.5 truncate ${isUrgent ? 'text-rose-500' : 'text-slate-400'}`}>{isDone ? `Por: ${task.colaborador}` : isUrgent ? `Desde: ${formatBrazilianDate(task.dataPlanejada)}` : `Hoje às ${task.horaPlanejada}h`}</p>
           </div>
           {!isDone ? (
             <button onClick={() => setCompletingTask(task)} className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl shadow-lg active:scale-95 transition-all ${isUrgent ? 'bg-rose-600 text-white shadow-rose-100' : 'bg-indigo-600 text-white shadow-indigo-100'}`}>✓</button>
@@ -258,12 +258,12 @@ const ManejoManager: React.FC<ManejoManagerProps> = ({ sheep, paddocks, groups, 
 
   return (
     <div className="space-y-8 pb-20 max-w-6xl mx-auto animate-in fade-in duration-500">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 rounded-[32px] border border-slate-200 shadow-sm">
+      <div className="flex flex-col lg:flex-row flex-wrap justify-between items-start lg:items-center gap-4 bg-white p-6 rounded-[32px] border border-slate-200 shadow-sm overflow-hidden">
         <div><h2 className="text-2xl font-black text-slate-800 uppercase tracking-tight">Painel de Operações</h2><p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mt-1">Gestão Completa e Auditoria de Campo</p></div>
-        <div className="flex gap-2">
-          <button onClick={() => setIsAllTasksModalOpen(true)} className="px-6 py-3 bg-slate-100 text-slate-600 rounded-2xl font-black uppercase text-[11px] active:scale-95 transition-all">Listar Tudo</button>
-          <button onClick={() => setIsAvisoModalOpen(true)} className="px-6 py-3 bg-slate-100 text-slate-600 rounded-2xl font-black uppercase text-[11px] active:scale-95 transition-all">Mural de Avisos</button>
-          <button onClick={() => { setEditingTask(null); setIsFormOpen(true); }} className="px-8 py-3 bg-indigo-600 text-white rounded-2xl font-black uppercase text-[11px] shadow-lg active:scale-95 transition-all">Agendar Manejo</button>
+        <div className="flex flex-wrap gap-2 w-full lg:w-auto">
+          <button onClick={() => setIsAllTasksModalOpen(true)} className="flex-1 lg:flex-none px-4 py-3 bg-slate-100 text-slate-600 rounded-2xl font-black uppercase text-[10px] sm:text-[11px] active:scale-95 transition-all whitespace-nowrap">Listar Tudo</button>
+          <button onClick={() => setIsAvisoModalOpen(true)} className="flex-1 lg:flex-none px-4 py-3 bg-slate-100 text-slate-600 rounded-2xl font-black uppercase text-[10px] sm:text-[11px] active:scale-95 transition-all whitespace-nowrap">Mural de Avisos</button>
+          <button onClick={() => { setEditingTask(null); setIsFormOpen(true); }} className="w-full sm:w-auto px-6 py-3 bg-indigo-600 text-white rounded-2xl font-black uppercase text-[10px] sm:text-[11px] shadow-lg active:scale-95 transition-all whitespace-nowrap">Agendar Manejo</button>
         </div>
       </div>
 
@@ -296,7 +296,7 @@ const ManejoManager: React.FC<ManejoManagerProps> = ({ sheep, paddocks, groups, 
         </div>
       </div>
 
-      <div className="bg-white p-8 rounded-[40px] border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-white p-4 md:p-6 lg:p-8 rounded-[40px] border border-slate-200 shadow-sm overflow-hidden">
         <ManejoCalendar 
           manejos={manejos} 
           onEdit={(t) => setAuthModal({ type: 'edit', task: t })}
