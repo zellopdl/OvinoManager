@@ -35,7 +35,7 @@ const NoticeBoard: React.FC<NoticeBoardProps> = ({ onStartProtocol }) => {
   const activeTasks = useMemo(() => 
     manejos.filter(m => 
       m.status === StatusManejo.PENDENTE && 
-      m.dataPlanejada.split('T')[0] === today
+      m.dataPlanejada.split('T')[0] <= today
     ).sort((a, b) => a.dataPlanejada.localeCompare(b.dataPlanejada)), 
   [manejos, today]);
 
@@ -296,26 +296,31 @@ const NoticeBoard: React.FC<NoticeBoardProps> = ({ onStartProtocol }) => {
                         <div 
                           key={aviso.id} 
                           onClick={() => setViewingAviso(aviso)}
-                          className={`p-5 rounded-[24px] border-2 transition-all cursor-pointer active:scale-[0.98] ${
+                          className={`p-6 md:p-8 rounded-[32px] border-2 transition-all cursor-pointer active:scale-[0.98] flex flex-col min-h-[180px] ${
                             aviso.prioridade === 'urgente' 
                               ? 'bg-rose-600/10 border-rose-500/30 shadow-lg' 
                               : 'bg-slate-900/40 border-slate-800/50'
                           } ${isConfirmed ? 'opacity-30 grayscale-[0.5]' : 'hover:border-indigo-500/50 hover:bg-slate-800/40'}`}
                         >
-                          <div className="flex justify-between items-start mb-2">
-                            <span className={`px-3 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest ${
-                              aviso.prioridade === 'urgente' ? 'bg-rose-600 text-white' : 'bg-slate-800 text-slate-500'
+                          <div className="flex justify-between items-start mb-4">
+                            <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${
+                              aviso.prioridade === 'urgente' ? 'bg-rose-600 text-white' : 'bg-slate-800 text-slate-400'
                             }`}>
                               {aviso.prioridade}
                             </span>
-                            <span className="text-[10px] font-bold text-slate-600 uppercase">
+                            <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">
                               {new Date(aviso.created_at!).toLocaleDateString('pt-BR')}
                             </span>
                           </div>
-                          <h3 className="text-lg md:text-xl font-black uppercase mb-2 text-white">{aviso.titulo}</h3>
-                          <p className="text-sm text-slate-400 line-clamp-2 leading-relaxed font-medium">
+                          <h3 className="text-xl md:text-2xl font-black uppercase mb-3 text-white leading-tight">{aviso.titulo}</h3>
+                          <p className="text-base md:text-lg text-slate-400 line-clamp-3 md:line-clamp-4 leading-relaxed font-medium flex-1">
                             {aviso.conteudo}
                           </p>
+                          <div className="mt-4 pt-4 border-t border-slate-800/50 flex justify-end">
+                            <span className="text-xs font-black text-indigo-400 uppercase tracking-widest flex items-center gap-2">
+                              Ler aviso completo <span>➔</span>
+                            </span>
+                          </div>
                         </div>
                       );
                     })
@@ -333,36 +338,39 @@ const NoticeBoard: React.FC<NoticeBoardProps> = ({ onStartProtocol }) => {
                         <div 
                           key={task.id} 
                           onClick={() => {
-                            if (task.protocolo && task.protocolo !== ProtocoloManejo.NENHUM) {
-                              onStartProtocol?.(task);
-                            } else {
-                              setCompletingTask(task);
-                            }
+                            setCompletingTask(task);
                           }}
-                          className={`p-5 rounded-[24px] border-2 transition-all active:scale-[0.98] cursor-pointer ${
+                          className={`group p-6 md:p-8 rounded-[32px] border-2 transition-all active:scale-[0.98] cursor-pointer flex flex-col min-h-[200px] ${
                             isOverdue ? 'bg-rose-900/10 border-rose-900/30' : 'bg-slate-900/40 border-slate-800/50'
                           } hover:border-emerald-500/50 hover:bg-slate-800/40`}
                         >
-                          <div className="flex justify-between items-center mb-3">
+                          <div className="flex justify-between items-center mb-4">
                             <div className="flex items-center gap-3">
-                              <span className={`w-3 h-3 rounded-full ${isOverdue ? 'bg-rose-500 animate-pulse' : 'bg-[#10b981]'}`}></span>
-                              <span className="text-xl font-black text-white tabular-nums">{task.horaPlanejada}h</span>
+                              <span className={`w-4 h-4 rounded-full ${isOverdue ? 'bg-rose-500 animate-pulse shadow-[0_0_10px_rgba(244,63,94,0.5)]' : 'bg-[#10b981] shadow-[0_0_10px_rgba(16,185,129,0.3)]'}`}></span>
+                              <span className="text-2xl font-black text-white tabular-nums">{task.horaPlanejada}h</span>
+                              {isOverdue && <span className="text-[10px] font-black text-rose-500 uppercase tracking-widest ml-2 bg-rose-500/10 px-2 py-1 rounded-md">Atrasada</span>}
                             </div>
                             {task.protocolo && task.protocolo !== ProtocoloManejo.NENHUM && (
-                              <span className="text-[10px] font-black bg-indigo-600 px-3 py-1 rounded-lg text-white uppercase animate-pulse shadow-lg shadow-indigo-900/20">
+                              <span className="text-xs font-black bg-indigo-600 px-4 py-1.5 rounded-xl text-white uppercase animate-pulse shadow-lg shadow-indigo-900/20">
                                 Protocolo
                               </span>
                             )}
                           </div>
                           
-                          <h3 className="text-lg md:text-xl font-black uppercase leading-tight mb-3 text-white">{task.titulo}</h3>
+                          <h3 className="text-xl md:text-2xl font-black uppercase leading-tight mb-3 text-white">{task.titulo}</h3>
                           
-                          <div className="flex justify-between items-center">
-                            <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">
-                              {task.grupoId || 'Geral'}
-                            </span>
-                            <div className="w-10 h-10 bg-emerald-600/20 text-[#10b981] rounded-xl flex items-center justify-center text-xl border border-emerald-500/20">
-                              ✓
+                          <p className="text-sm md:text-base text-slate-400 line-clamp-2 mb-6 flex-1 font-medium">
+                            {task.procedimento || 'Nenhuma instrução adicional fornecida.'}
+                          </p>
+                          
+                          <div className="mt-auto pt-4 border-t border-slate-800/50 flex justify-between items-center">
+                            <div className="flex flex-col">
+                              <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-1">Grupo Alvo</span>
+                              <span className="text-sm font-bold text-slate-300 uppercase">{task.grupoId || 'Geral'}</span>
+                            </div>
+                            <div className="flex items-center gap-3 text-emerald-500 font-black uppercase text-xs tracking-widest bg-emerald-500/10 px-4 py-2 rounded-xl border border-emerald-500/20 group-hover:bg-emerald-500 group-hover:text-white transition-colors">
+                              <span>Abrir Tarefa</span>
+                              <span className="text-lg">➔</span>
                             </div>
                           </div>
                         </div>
@@ -503,13 +511,30 @@ const NoticeBoard: React.FC<NoticeBoardProps> = ({ onStartProtocol }) => {
               >
                 Voltar
               </button>
-              <button 
-                onClick={handleComplete} 
-                disabled={!executor.trim()} 
-                className="py-4 md:py-5 bg-emerald-600 text-white rounded-2xl md:rounded-3xl font-black uppercase text-xs md:text-sm tracking-widest shadow-2xl shadow-emerald-900/40 disabled:opacity-20 transition-all active:scale-95"
-              >
-                Concluir Tarefa
-              </button>
+              <div className="flex flex-col gap-2">
+                {completingTask.protocolo && completingTask.protocolo !== ProtocoloManejo.NENHUM && (
+                  <button 
+                    onClick={() => {
+                      if (onStartProtocol) {
+                        onStartProtocol(completingTask);
+                        setCompletingTask(null);
+                        setExecutor('');
+                        setNotes('');
+                      }
+                    }}
+                    className="py-4 md:py-5 bg-indigo-600 text-white rounded-2xl md:rounded-3xl font-black uppercase text-xs md:text-sm tracking-widest shadow-2xl shadow-indigo-900/40 transition-all active:scale-95 w-full"
+                  >
+                    IR PARA PROTOCOLO
+                  </button>
+                )}
+                <button 
+                  onClick={handleComplete} 
+                  disabled={!executor.trim()} 
+                  className="py-4 md:py-5 bg-emerald-600 text-white rounded-2xl md:rounded-3xl font-black uppercase text-xs md:text-sm tracking-widest shadow-2xl shadow-emerald-900/40 disabled:opacity-20 transition-all active:scale-95 w-full"
+                >
+                  Concluir Tarefa
+                </button>
+              </div>
             </div>
           </div>
         </div>

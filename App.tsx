@@ -368,7 +368,7 @@ const App: React.FC = () => {
           className="px-6 py-2.5 bg-rose-600 text-white rounded-2xl font-black uppercase text-[10px] shadow-xl animate-pulse flex items-center gap-2 hover:bg-rose-700 transition-all active:scale-95 border-2 border-rose-500/50"
         >
           <span>⬅️</span>
-          <span>Finalizar e Voltar ao Mural</span>
+          <span>Voltar ao Mural</span>
         </button>
       )}
       {HeaderActions}
