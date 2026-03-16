@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 
 const Login: React.FC = () => {
@@ -9,6 +9,15 @@ const Login: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [cabanha, setCabanha] = useState<any>(null);
+
+  useEffect(() => {
+    const fetchCabanha = async () => {
+      const { data } = await supabase.from('cabanha_info').select('*').limit(1).maybeSingle();
+      if (data) setCabanha(data);
+    };
+    fetchCabanha();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,9 +45,16 @@ const Login: React.FC = () => {
     <div className="min-h-screen bg-slate-900 flex items-center justify-center p-6 relative overflow-hidden">
       <div className="w-full max-w-md bg-white rounded-[40px] shadow-2xl p-10 border border-slate-200">
         <div className="text-center mb-8">
-          <div className="w-20 h-20 bg-emerald-500 rounded-3xl flex items-center justify-center text-3xl mx-auto mb-4 animate-bounce">🐑</div>
-          <h1 className="text-3xl font-black text-slate-900 uppercase">OviManager</h1>
-          <p className="text-[10px] font-black text-slate-400 uppercase mt-2 tracking-widest">
+          {cabanha?.logo_url ? (
+            <img src={cabanha.logo_url} alt="Logo" className="w-20 h-20 bg-white rounded-3xl object-contain mx-auto mb-4 animate-in fade-in zoom-in duration-500" />
+          ) : (
+            <div className="w-20 h-20 bg-emerald-500 rounded-3xl flex items-center justify-center text-3xl mx-auto mb-4 animate-bounce">🐑</div>
+          )}
+          <h1 className="text-2xl font-black text-slate-900 uppercase leading-none">OVINO-MANAGER</h1>
+          {cabanha?.nome && (
+            <p className="text-sm font-bold text-emerald-600 uppercase mt-1">{cabanha.nome}</p>
+          )}
+          <p className="text-[10px] font-black text-slate-400 uppercase mt-4 tracking-widest">
             {isSignUp ? 'Crie sua conta' : 'Acesse o sistema'}
           </p>
         </div>

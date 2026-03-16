@@ -6,6 +6,7 @@ import ChartsView from './modulo/analises/ChartsView.tsx';
 import SheepTable from './modulo/rebanho/SheepTable.tsx';
 import SheepForm from './modulo/rebanho/SheepForm.tsx';
 import ManejoManager from './modulo/manejo/ManejoManager.tsx';
+import VacinacaoManager from './modulo/vacinacao/VacinacaoManager.tsx';
 import KnowledgeAssistant from './modulo/suporte/KnowledgeAssistant.tsx';
 import EntityManager from './modulo/cadastros/EntityManager.tsx';
 import PaddockManager from './modulo/cadastros/PaddockManager.tsx';
@@ -26,6 +27,7 @@ import { manejoService } from './modulo/manejo/manejoService.ts';
 import { getSheepInsight } from './modulo/dashboard/geminiService.ts';
 import { supabase, isSupabaseConfigured } from './lib/supabase.ts';
 import { SUPABASE_SCHEMA_SQL } from './constants.tsx';
+import { cabanhaService } from './modulo/sistema/cabanhaService.ts';
 
 const App: React.FC = () => {
   const [session, setSession] = useState<any>(null);
@@ -75,6 +77,7 @@ const App: React.FC = () => {
   const [breedingPlans, setBreedingPlans] = useState<BreedingPlan[]>([]);
   const [manejos, setManejos] = useState<Manejo[]>([]);
   const [perfil, setPerfil] = useState<Perfil | null>(null);
+  const [cabanhaInfo, setCabanhaInfo] = useState<any>(null);
 
   useEffect(() => {
     if (session?.user?.id) {
@@ -135,14 +138,15 @@ const App: React.FC = () => {
       else setConnectionStatus('local');
       
       // Carregamento em paralelo para máxima velocidade
-      const [sData, bData, supData, gData, pData, bpData, mData] = await Promise.all([
+      const [sData, bData, supData, gData, pData, bpData, mData, cInfo] = await Promise.all([
         sheepService.getAll().catch(() => []),
         entityService.getAll('racas').catch(() => []),
         entityService.getAll('fornecedores').catch(() => []),
         entityService.getAll('grupos').catch(() => []),
         entityService.getAll('piquetes').catch(() => []),
         breedingPlanService.getAll().catch(() => []),
-        manejoService.getAll().catch(() => [])
+        manejoService.getAll().catch(() => []),
+        cabanhaService.getInfo().catch(() => null)
       ]);
       
       setSheep(sData || []); 
@@ -152,6 +156,7 @@ const App: React.FC = () => {
       setPaddocks((pData as Paddock[]) || []);
       setBreedingPlans(bpData || []);
       setManejos(mData || []);
+      setCabanhaInfo(cInfo);
       
       if (!forceLocal && isSupabaseConfigured) setConnectionStatus('online');
     } catch (err) {
@@ -251,7 +256,10 @@ const App: React.FC = () => {
       else await sheepService.create(data);
       await loadInitialData();
       setView('list');
-    } catch (err: any) { alert("Erro ao salvar animal."); }
+    } catch (err: any) { 
+      console.error("Erro ao salvar animal:", err);
+      alert(`Erro ao salvar animal: ${err.message || JSON.stringify(err)}`); 
+    }
     finally { setIsSaving(false); }
   };
 
@@ -263,6 +271,7 @@ const App: React.FC = () => {
       case 'charts': return <ChartsView sheep={safeSheep} breeds={breeds} groups={groups} />;
       case 'guia': return <KnowledgeAssistant />;
       case 'manejo': return <ManejoManager sheep={safeSheep} paddocks={paddocks} groups={groups} onRefreshSheep={loadInitialData} managerPassword={managerPassword} />;
+      case 'vacinacao': return <VacinacaoManager sheep={safeSheep} groups={groups} plans={breedingPlans} />;
       case 'weight': return <WeightManager sheep={safeSheep} groups={groups} paddocks={paddocks} onRefresh={loadInitialData} />;
       case 'ecc': return <ECCManager sheep={safeSheep} groups={groups} paddocks={paddocks} onRefresh={loadInitialData} />;
       case 'famacha': return <FamachaManager sheep={safeSheep} groups={groups} paddocks={paddocks} onRefresh={loadInitialData} />;
@@ -281,7 +290,7 @@ const App: React.FC = () => {
             existingSheep={safeSheep} />
         );
       case 'racas': return <EntityManager title="Raças" tableName="racas" icon="🏷️" initialData={breeds} onRefresh={loadInitialData} sheep={safeSheep} />;
-      case 'noticeboard': return <NoticeBoard onStartProtocol={(task) => {
+      case 'noticeboard': return <NoticeBoard sheep={safeSheep} groups={groups} plans={breedingPlans} onStartProtocol={(task) => {
         setActiveProtocolTask(task);
         if (task.protocolo === ProtocoloManejo.PESAGEM) setActiveTab('weight');
         else if (task.protocolo === ProtocoloManejo.FAMACHA) setActiveTab('famacha');
@@ -302,6 +311,24 @@ const App: React.FC = () => {
           ) : (
             <div className="space-y-6">
               <LogoGenerator />
+              
+              <div className="bg-white p-6 rounded-2xl border space-y-4">
+                <h3 className="text-sm font-black text-slate-800 uppercase text-center">Configurações de Acesso</h3>
+                <button 
+                  onClick={() => {
+                    const newPwd = prompt("Digite a nova senha mestra:");
+                    if (newPwd && newPwd.trim().length > 0) {
+                      setManagerPassword(newPwd.trim());
+                      localStorage.setItem('ovi_manager_pwd', newPwd.trim());
+                      alert("Senha mestra alterada com sucesso!");
+                    }
+                  }} 
+                  className="w-full py-3 bg-indigo-50 text-indigo-600 rounded-xl font-black uppercase text-[10px] hover:bg-indigo-100 transition-colors"
+                >
+                  Alterar Senha Mestra
+                </button>
+              </div>
+
               <div className="bg-white p-6 rounded-2xl border">
                 <button onClick={copySqlSchema} className="w-full py-3 bg-slate-900 text-white rounded-xl font-black uppercase text-[10px]">Copiar Script SQL Supabase</button>
               </div>
@@ -347,7 +374,12 @@ const App: React.FC = () => {
 
   // Se for operador e não estiver em um protocolo, mostra o Quadro de Avisos em tela cheia
   if (isOperator && !activeProtocolTask) {
-    return <NoticeBoard key="operator-notice-board" onStartProtocol={(task) => {
+    return <NoticeBoard 
+      key="operator-notice-board" 
+      sheep={sheep || []}
+      groups={groups}
+      plans={breedingPlans}
+      onStartProtocol={(task) => {
       setActiveProtocolTask(task);
       // Mapeia o protocolo para a aba correta
       if (task.protocolo === ProtocoloManejo.PESAGEM) setActiveTab('weight');
@@ -382,6 +414,7 @@ const App: React.FC = () => {
       headerExtra={HeaderExtra} 
       isOperator={isOperator} 
       activeProtocolTask={activeProtocolTask}
+      cabanhaInfo={cabanhaInfo}
     >
       <div className="min-h-[80vh] flex flex-col">{renderContent()}</div>
       {analysisSheep && (

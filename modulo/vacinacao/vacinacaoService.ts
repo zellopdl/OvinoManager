@@ -1,0 +1,184 @@
+import { supabase, isSupabaseConfigured } from '../../lib/supabase';
+import { VacinacaoConfig } from './VacinacaoManager';
+
+const TABLE_NAME = 'vacinacao_config';
+
+// Helper to convert DB snake_case to camelCase
+const mapFromDB = (data: any): VacinacaoConfig => ({
+  hasRaiva: data.has_raiva,
+  hasLeptospirose: data.has_leptospirose,
+  hasPasteurelose: data.has_pasteurelose,
+  hasLinfadenite: data.has_linfadenite,
+  hasEctima: data.has_ectima,
+  protocoloOficial: data.protocolo_oficial || '',
+  tipoClostridiose: data.tipo_clostridiose || '8',
+  vacinaRaivaDisp: data.vacina_raiva_disp,
+  vacinaLeptoDisp: data.vacina_lepto_disp,
+  vacinaPasteureloseDisp: data.vacina_pasteurelose_disp,
+  outrasVacinas: data.outras_vacinas || '',
+  temHistorico: data.tem_historico,
+  historicoDetalhes: data.historico_detalhes || '',
+  estacaoMonta: data.estacao_monta,
+  prenhezMultipla: data.prenhez_multipla,
+  reforcoGestacao: data.reforco_gestacao,
+  mesAnual: data.mes_anual || 1,
+  intervalo5Dias: data.intervalo_5_dias,
+  quadroVisual: data.quadro_visual,
+});
+
+// Helper to convert camelCase to DB snake_case
+const mapToDB = (config: VacinacaoConfig): any => ({
+  has_raiva: config.hasRaiva,
+  has_leptospirose: config.hasLeptospirose,
+  has_pasteurelose: config.hasPasteurelose,
+  has_linfadenite: config.hasLinfadenite,
+  has_ectima: config.hasEctima,
+  protocolo_oficial: config.protocoloOficial,
+  tipo_clostridiose: config.tipoClostridiose,
+  vacina_raiva_disp: config.vacinaRaivaDisp,
+  vacina_lepto_disp: config.vacinaLeptoDisp,
+  vacina_pasteurelose_disp: config.vacinaPasteureloseDisp,
+  outras_vacinas: config.outrasVacinas,
+  tem_historico: config.temHistorico,
+  historico_detalhes: config.historicoDetalhes,
+  estacao_monta: config.estacaoMonta,
+  prenhez_multipla: config.prenhezMultipla,
+  reforco_gestacao: config.reforcoGestacao,
+  mes_anual: config.mesAnual,
+  intervalo_5_dias: config.intervalo5Dias,
+  quadro_visual: config.quadroVisual,
+  updated_at: new Date().toISOString(),
+});
+
+export const vacinacaoService = {
+  async getConfirmedVaccinations(): Promise<string[]> {
+    if (!isSupabaseConfigured) {
+      const local = localStorage.getItem('ovi_vacinacao_history');
+      return local ? JSON.parse(local) : [];
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('vacinacao_history')
+        .select('date, vaccine, type');
+      
+      if (error) throw error;
+      return data ? data.map((d: any) => `${d.date}_${d.vaccine}_${d.type}`) : [];
+    } catch (err) {
+      console.error('Erro ao buscar histórico de vacinação:', err);
+      return [];
+    }
+  },
+
+  async confirmVaccination(date: string, vaccine: string, type: string): Promise<void> {
+    if (!isSupabaseConfigured) {
+      const local = localStorage.getItem('ovi_vacinacao_history');
+      const history = local ? JSON.parse(local) : [];
+      history.push(`${date}_${vaccine}_${type}`);
+      localStorage.setItem('ovi_vacinacao_history', JSON.stringify(history));
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('vacinacao_history')
+        .insert([{ date, vaccine, type }]);
+      
+      if (error) throw error;
+    } catch (err) {
+      console.error('Erro ao confirmar vacinação:', err);
+      throw err;
+    }
+  },
+
+  async getConfig(): Promise<VacinacaoConfig | null> {
+    if (!isSupabaseConfigured) {
+      const local = localStorage.getItem('ovi_vacinacao_config');
+      return local ? JSON.parse(local) : null;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from(TABLE_NAME)
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (error && error.code !== 'PGRST116') { // PGRST116 is "no rows returned"
+        console.error('Erro ao buscar configuração de vacinação:', error);
+        return null;
+      }
+
+      return data ? mapFromDB(data) : null;
+    } catch (err) {
+      console.error('Exceção ao buscar configuração de vacinação:', err);
+      return null;
+    }
+  },
+
+  async saveConfig(config: VacinacaoConfig): Promise<void> {
+    if (!isSupabaseConfigured) {
+      localStorage.setItem('ovi_vacinacao_config', JSON.stringify(config));
+      return;
+    }
+
+    try {
+      // Check if one exists to update, or insert new
+      const { data: existing } = await supabase
+        .from(TABLE_NAME)
+        .select('id')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (existing) {
+        const { error } = await supabase
+          .from(TABLE_NAME)
+          .update(mapToDB(config))
+          .eq('id', existing.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from(TABLE_NAME)
+          .insert([mapToDB(config)]);
+        if (error) throw error;
+      }
+    } catch (err) {
+      console.error('Erro ao salvar configuração de vacinação:', err);
+      throw err;
+    }
+  },
+
+  async deleteConfig(): Promise<void> {
+    if (!isSupabaseConfigured) {
+      localStorage.removeItem('ovi_vacinacao_config');
+      return;
+    }
+
+    try {
+      const { data: existing, error: fetchError } = await supabase
+        .from(TABLE_NAME)
+        .select('id')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (fetchError) {
+        console.error('Erro ao buscar configuração para deletar:', fetchError);
+        throw fetchError;
+      }
+
+      if (existing) {
+        const { error } = await supabase
+          .from(TABLE_NAME)
+          .delete()
+          .eq('id', existing.id);
+        if (error) throw error;
+      }
+    } catch (err) {
+      console.error('Erro ao deletar configuração de vacinação:', err);
+      throw err;
+    }
+  }
+};

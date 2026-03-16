@@ -134,8 +134,13 @@ ALTER TABLE public.historico_peso ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.historico_ecc ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.historico_famacha ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Acesso total historico_peso" ON public.historico_peso;
 CREATE POLICY "Acesso total historico_peso" ON public.historico_peso FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Acesso total historico_ecc" ON public.historico_ecc;
 CREATE POLICY "Acesso total historico_ecc" ON public.historico_ecc FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Acesso total historico_famacha" ON public.historico_famacha;
 CREATE POLICY "Acesso total historico_famacha" ON public.historico_famacha FOR ALL USING (true) WITH CHECK (true);
 
 -- 4. Estações de Monta (Lotes)
@@ -212,6 +217,54 @@ CREATE TABLE IF NOT EXISTS public.avisos (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
 
--- 9. CORREÇÕES / ATUALIZAÇÕES (Execute se as tabelas já existirem)
+-- 9. Configuração de Vacinação
+CREATE TABLE IF NOT EXISTS public.vacinacao_config (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  has_raiva BOOLEAN DEFAULT false,
+  has_leptospirose BOOLEAN DEFAULT false,
+  has_pasteurelose BOOLEAN DEFAULT false,
+  has_linfadenite BOOLEAN DEFAULT false,
+  has_ectima BOOLEAN DEFAULT false,
+  protocolo_oficial TEXT,
+  tipo_clostridiose TEXT DEFAULT '8',
+  vacina_raiva_disp BOOLEAN DEFAULT false,
+  vacina_lepto_disp BOOLEAN DEFAULT false,
+  vacina_pasteurelose_disp BOOLEAN DEFAULT false,
+  outras_vacinas TEXT,
+  tem_historico BOOLEAN DEFAULT false,
+  historico_detalhes TEXT,
+  estacao_monta BOOLEAN DEFAULT false,
+  prenhez_multipla BOOLEAN DEFAULT false,
+  reforco_gestacao BOOLEAN DEFAULT false,
+  mes_anual INTEGER DEFAULT 1,
+  intervalo_5_dias BOOLEAN DEFAULT false,
+  quadro_visual BOOLEAN DEFAULT true,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
+
+-- 10. Histórico de Vacinação
+CREATE TABLE IF NOT EXISTS public.vacinacao_history (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  date TEXT NOT NULL,
+  vaccine TEXT NOT NULL,
+  type TEXT NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
+
+-- 11. Informações da Cabanha
+CREATE TABLE IF NOT EXISTS public.cabanha_info (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  nome TEXT NOT NULL,
+  logo_url TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
+
+ALTER TABLE public.cabanha_info ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Acesso total cabanha_info" ON public.cabanha_info;
+CREATE POLICY "Acesso total cabanha_info" ON public.cabanha_info FOR ALL USING (true) WITH CHECK (true);
+
+-- 10. CORREÇÕES / ATUALIZAÇÕES (Execute se as tabelas já existirem)
 ALTER TABLE public.avisos ADD COLUMN IF NOT EXISTS confirmacoes JSONB DEFAULT '[]'::jsonb;
 `;

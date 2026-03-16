@@ -87,10 +87,10 @@ export const getHerdDailyInsights = async (herd: any[]) => {
   } catch (error) { return []; }
 };
 
-export const generateAppLogo = async () => {
+export const generateAppLogo = async (farmName: string = "") => {
   try {
     const ai = getAIClient();
-    const prompt = "A modern minimalist sheep head logo, emerald green and slate blue, vector style.";
+    const prompt = `A modern minimalist sheep head logo, emerald green and slate blue, vector style. ${farmName ? `The logo should represent a farm named "${farmName}".` : ''}`;
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash-image',
       contents: { parts: [{ text: prompt }] },

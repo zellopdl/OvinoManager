@@ -11,9 +11,10 @@ interface LayoutProps {
   headerExtra?: React.ReactNode;
   isOperator?: boolean;
   activeProtocolTask?: Manejo | null;
+  cabanhaInfo?: any;
 }
 
-const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab, headerExtra, isOperator, activeProtocolTask }) => {
+const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab, headerExtra, isOperator, activeProtocolTask, cabanhaInfo }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isDesktopCollapsed, setIsDesktopCollapsed] = useState(() => {
     const saved = localStorage.getItem('ovi_sidebar_collapsed');
@@ -34,6 +35,7 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab, head
     { id: 'famacha', label: 'Famacha', icon: '👁️', category: 'Operacional' },
     { id: 'repro', label: 'Reprodução', icon: '🧬', category: 'Operacional' },
     { id: 'manejo', label: 'Agenda', icon: '📅', category: 'Operacional' },
+    { id: 'vacinacao', label: 'Vacinação', icon: '💉', category: 'Operacional' },
     { id: 'guia', label: 'Consultoria', icon: '💡', category: 'Suporte' },
     { id: 'racas', label: 'Raças', icon: '🏷️', category: 'Cadastros' },
     { id: 'piquetes', label: 'Piquetes', icon: '🌾', category: 'Cadastros' },
@@ -71,8 +73,19 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab, head
       {/* Sidebar - Desktop */}
       <aside className={`hidden ${isOperator ? '' : 'md:flex'} flex-col bg-slate-900 text-white shadow-xl z-20 transition-all duration-300 ${isDesktopCollapsed ? 'w-20' : 'w-64'}`}>
         <div className={`p-5 border-b border-slate-800 flex items-center ${isDesktopCollapsed ? 'justify-center' : 'gap-3'}`}>
-          <div className="w-8 h-8 bg-emerald-500 rounded-lg flex items-center justify-center text-lg shadow-lg shrink-0">🐑</div>
-          {!isDesktopCollapsed && <h1 className="text-lg font-black tracking-tight">OviManager</h1>}
+          {cabanhaInfo?.logo_url ? (
+            <img src={cabanhaInfo.logo_url} alt="Logo" className="w-8 h-8 rounded-lg object-contain bg-white shrink-0" />
+          ) : (
+            <div className="w-8 h-8 bg-emerald-500 rounded-lg flex items-center justify-center text-lg shadow-lg shrink-0">🐑</div>
+          )}
+          {!isDesktopCollapsed && (
+            <div className="flex flex-col min-w-0">
+              <h1 className="text-sm font-black tracking-tight text-white uppercase leading-none">OVINO-MANAGER</h1>
+              {cabanhaInfo?.nome && (
+                <span className="text-[10px] font-bold text-emerald-500 truncate uppercase mt-0.5">{cabanhaInfo.nome}</span>
+              )}
+            </div>
+          )}
         </div>
         
         <nav className="flex-1 p-3 space-y-4 overflow-y-auto custom-scrollbar dark-scrollbar">
@@ -113,9 +126,20 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab, head
       <div className="flex-1 flex flex-col min-w-0 relative h-full">
         <header className="bg-white border-b border-slate-200 h-14 md:h-16 flex items-center justify-between px-4 md:px-8 shrink-0 z-20 shadow-sm">
           <div className="flex items-center gap-2">
-            <div className="md:hidden w-8 h-8 bg-emerald-500 rounded-lg flex items-center justify-center text-sm shadow-sm">🐑</div>
+            {cabanhaInfo?.logo_url ? (
+              <img src={cabanhaInfo.logo_url} alt="Logo" className="md:hidden w-8 h-8 rounded-lg object-contain bg-slate-100 shrink-0" />
+            ) : (
+              <div className="md:hidden w-8 h-8 bg-emerald-500 rounded-lg flex items-center justify-center text-sm shadow-sm">🐑</div>
+            )}
             <h2 className="text-sm md:text-lg font-black text-slate-800 capitalize tracking-tight truncate max-w-[120px] sm:max-w-none">
-              {menuItems.find(m => m.id === activeTab)?.label || 'OviManager'}
+              {menuItems.find(m => m.id === activeTab)?.id === 'dashboard' || !menuItems.find(m => m.id === activeTab) ? (
+                <div className="flex flex-col">
+                  <span className="text-[10px] md:text-xs font-black uppercase leading-none">OVINO-MANAGER</span>
+                  <span className="text-[8px] md:text-[10px] font-bold text-emerald-600 uppercase truncate">{cabanhaInfo?.nome || 'Gestão Ovina'}</span>
+                </div>
+              ) : (
+                menuItems.find(m => m.id === activeTab)?.label
+              )}
             </h2>
           </div>
           <div className="flex items-center gap-1.5 md:gap-2 scale-90 md:scale-100 origin-right">

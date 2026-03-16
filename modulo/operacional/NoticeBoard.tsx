@@ -1,18 +1,25 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Manejo, StatusManejo, ProtocoloManejo } from '../../types';
+import { Manejo, StatusManejo, ProtocoloManejo, Sheep, Group, BreedingPlan } from '../../types';
 import { manejoService } from '../manejo/manejoService';
 import { avisoService, Aviso } from './avisoService';
+import { vacinacaoService } from '../vacinacao/vacinacaoService';
+import { VacinacaoConfig } from '../vacinacao/VacinacaoManager';
+import VacinacaoCalendar from '../vacinacao/VacinacaoCalendar';
 import { getLocalDateString, formatBrazilianDate } from '../../utils';
 import { supabase } from '../../lib/supabase';
 
 interface NoticeBoardProps {
   onStartProtocol?: (task: Manejo) => void;
+  sheep: Sheep[];
+  groups: Group[];
+  plans: BreedingPlan[];
 }
 
-const NoticeBoard: React.FC<NoticeBoardProps> = ({ onStartProtocol }) => {
+const NoticeBoard: React.FC<NoticeBoardProps> = ({ onStartProtocol, sheep, groups, plans }) => {
   const [manejos, setManejos] = useState<Manejo[]>([]);
   const [avisos, setAvisos] = useState<Aviso[]>([]);
+  const [vacinacaoConfig, setVacinacaoConfig] = useState<VacinacaoConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [completingTask, setCompletingTask] = useState<Manejo | null>(null);
   const [viewingAviso, setViewingAviso] = useState<Aviso | null>(null);
@@ -20,7 +27,7 @@ const NoticeBoard: React.FC<NoticeBoardProps> = ({ onStartProtocol }) => {
   const [notes, setNotes] = useState('');
   const [currentTime, setCurrentTime] = useState(new Date());
   const [audioEnabled, setAudioEnabled] = useState(false);
-  const [activeView, setActiveView] = useState<'none' | 'mural' | 'tarefas'>('none');
+  const [activeView, setActiveView] = useState<'none' | 'mural' | 'tarefas' | 'vacinacao'>('none');
 
   const hasUrgentUnconfirmed = useMemo(() => 
     avisos.some(a => a.prioridade === 'urgente' && !a.confirmacoes?.some(c => c.user === 'Operador')),
@@ -38,6 +45,71 @@ const NoticeBoard: React.FC<NoticeBoardProps> = ({ onStartProtocol }) => {
       m.dataPlanejada.split('T')[0] <= today
     ).sort((a, b) => a.dataPlanejada.localeCompare(b.dataPlanejada)), 
   [manejos, today]);
+
+  const upcomingVaccinations = useMemo(() => {
+    if (!vacinacaoConfig) return [];
+    
+    const evts: { date: string, title: string, vaccine: string, animals: Sheep[] }[] = [];
+    const addDays = (dateStr: string, days: number) => {
+      const d = new Date(dateStr + 'T12:00:00Z');
+      d.setDate(d.getDate() + days);
+      return d.toISOString().split('T')[0];
+    };
+
+    const addEvt = (dateStr: string, title: string, vaccine: string, animal: Sheep) => {
+      let existing = evts.find(e => e.date === dateStr && e.title === title);
+      if (!existing) {
+        existing = { date: dateStr, title, vaccine, animals: [] };
+        evts.push(existing);
+      }
+      existing.animals.push(animal);
+    };
+
+    // 1. Cordeiros
+    sheep.forEach(s => {
+      if (s.nascimento) {
+        addEvt(addDays(s.nascimento, 40), '1ª Dose Clostridiose (Cordeiros)', `Clostridiose (${vacinacaoConfig.tipoClostridiose} cepas)`, s);
+        addEvt(addDays(s.nascimento, 70), 'Reforço Clostridiose (Cordeiros)', `Clostridiose (${vacinacaoConfig.tipoClostridiose} cepas)`, s);
+        if (vacinacaoConfig.hasEctima) {
+          addEvt(addDays(s.nascimento, 15), 'Vacina Ectima Contagioso', 'Ectima', s);
+        }
+        if (vacinacaoConfig.outrasVacinas) {
+          addEvt(addDays(s.nascimento, 90), '1ª Dose Outras Vacinas', vacinacaoConfig.outrasVacinas, s);
+          addEvt(addDays(s.nascimento, 120), '2ª Dose Outras Vacinas', vacinacaoConfig.outrasVacinas, s);
+        }
+      }
+    });
+
+    // 2. Quarentena
+    const quarentenaGroup = groups.find(g => g.nome.toLowerCase().includes('quarentena'));
+    if (quarentenaGroup) {
+      sheep.filter(s => s.grupoId === quarentenaGroup.id).forEach(s => {
+        const d0 = s.createdAt ? s.createdAt.split('T')[0] : new Date().toISOString().split('T')[0];
+        addEvt(d0, 'Protocolo Entrada (Dia 0)', 'Vermífugo + Clostridiose', s);
+        addEvt(addDays(d0, 30), 'Protocolo Entrada (Dia 30)', 'Reforço Clostridiose', s);
+      });
+    }
+
+    // 3. Pré-Monta & Prenhas
+    plans.forEach(p => {
+      if (p.dataInicioMonta) {
+        const dPre = addDays(p.dataInicioMonta, -15);
+        const planSheepIds = p.ovelhas?.map(o => o.eweId) || [];
+        sheep.filter(s => planSheepIds.includes(s.id)).forEach(s => {
+          addEvt(dPre, `Pré-Monta: ${p.nome}`, `Clostridiose + Reprodutivas`, s);
+        });
+
+        const prenhasIds = p.ovelhas?.filter(o => o.ciclo1 === 'prenha' || o.ciclo2 === 'prenha' || o.ciclo3 === 'prenha').map(o => o.eweId) || [];
+        sheep.filter(s => prenhasIds.includes(s.id)).forEach(s => {
+          const d100 = addDays(p.dataInicioMonta, 115);
+          addEvt(d100, `Gestantes (100 dias)`, `Clostridiose (${vacinacaoConfig.tipoClostridiose} cepas)`, s);
+        });
+      }
+    });
+
+    const nextWeek = addDays(today, 7);
+    return evts.filter(e => e.date >= today && e.date <= nextWeek).sort((a, b) => a.date.localeCompare(b.date));
+  }, [sheep, groups, plans, vacinacaoConfig, today]);
 
   useEffect(() => {
     let timeoutId: any;
@@ -81,12 +153,14 @@ const NoticeBoard: React.FC<NoticeBoardProps> = ({ onStartProtocol }) => {
   const loadData = async (silent = false) => {
     if (!silent) setLoading(true);
     try {
-      const [mTasks, aNotices] = await Promise.all([
+      const [mTasks, aNotices, vConfig] = await Promise.all([
         manejoService.getAll().catch(() => []),
-        avisoService.getAll().catch(() => [])
+        avisoService.getAll().catch(() => []),
+        vacinacaoService.getConfig().catch(() => null)
       ]);
       setManejos(mTasks);
       setAvisos(aNotices);
+      setVacinacaoConfig(vConfig);
     } catch (e) {
       console.error("Erro ao carregar dados:", e);
     } finally {
@@ -184,7 +258,7 @@ const NoticeBoard: React.FC<NoticeBoardProps> = ({ onStartProtocol }) => {
       )}
 
       {/* HEADER ESTILO IMAGEM */}
-      <header className="bg-[#05070a] p-4 md:p-6 flex justify-between items-start shrink-0 z-50">
+      <header className="bg-[#05070a] p-4 md:p-6 flex justify-between items-center shrink-0 z-50 border-b border-slate-800/30">
         <div className="flex items-center gap-4">
           <div className="w-10 h-10 md:w-12 md:h-12 bg-[#10b981] rounded-xl flex items-center justify-center text-2xl shadow-lg shadow-emerald-900/20">
             <span className="filter brightness-0 invert">🐑</span>
@@ -194,37 +268,61 @@ const NoticeBoard: React.FC<NoticeBoardProps> = ({ onStartProtocol }) => {
             <p className="text-[#10b981] text-[10px] md:text-sm font-black uppercase tracking-[0.15em] mt-0.5">Operação de Campo</p>
           </div>
         </div>
+
+        {/* RELÓGIO NO CABEÇALHO */}
+        <div className="hidden md:flex flex-col items-center">
+          <h2 className="text-2xl md:text-4xl font-black tracking-tighter text-white tabular-nums leading-none">
+            {currentTime.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+          </h2>
+          <p className="text-[10px] font-black text-[#10b981] uppercase tracking-[0.2em]">
+            {formatBrazilianDate(today)}
+          </p>
+        </div>
         
         <div className="flex items-center gap-4">
+          {/* Relógio mobile */}
+          <div className="md:hidden flex flex-col items-end mr-2">
+            <span className="text-lg font-black text-white tabular-nums leading-none">
+              {currentTime.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+            </span>
+          </div>
           <button 
             onClick={handleLogout}
-            className="flex items-center gap-3 px-6 py-3 bg-rose-600 text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-lg shadow-rose-900/40 active:scale-95 transition-all border border-rose-500/50"
+            className="flex items-center gap-3 px-4 py-2 md:px-6 md:py-3 bg-rose-600 text-white rounded-2xl font-black uppercase text-[10px] md:text-xs tracking-widest shadow-lg shadow-rose-900/40 active:scale-95 transition-all border border-rose-500/50"
           >
-            <span>SAIR</span>
+            <span className="hidden sm:inline">SAIR</span>
             <span className="text-lg">🚪</span>
           </button>
         </div>
       </header>
 
-      {/* RELÓGIO CENTRALIZADO ESTILO IMAGEM */}
-      <div className="flex flex-col items-center justify-center py-2 shrink-0">
-        <h2 className="text-4xl md:text-6xl font-black tracking-tighter text-white tabular-nums leading-none drop-shadow-[0_0_20px_rgba(255,255,255,0.1)]">
-          {currentTime.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-        </h2>
-        <p className="text-sm md:text-lg font-black text-[#10b981] uppercase tracking-[0.3em] mt-1">
-          {formatBrazilianDate(today)}
-        </p>
-      </div>
-
       {/* CONTEÚDO DINÂMICO */}
-      <main className="flex-1 flex flex-col overflow-hidden p-4 md:p-6 pt-2">
+      <main className="flex-1 flex flex-col overflow-hidden p-4 md:p-6 pt-4">
         {activeView === 'none' ? (
-          <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-6 items-center max-w-5xl mx-auto w-full">
-            {/* BOTÃO MURAL */}
-            <button 
-              onClick={() => setActiveView('mural')}
-              className="group relative h-[200px] md:h-[300px] bg-[#0a0f18]/60 border-4 border-slate-800/50 rounded-[48px] overflow-hidden shadow-2xl transition-all hover:border-indigo-500/50 hover:bg-indigo-950/10 active:scale-95 flex flex-col items-center justify-center gap-4"
-            >
+          <div className="flex-1 flex flex-col justify-start items-center gap-6 max-w-none mx-auto w-full">
+            
+            {/* ALERTA DE VACINAÇÃO - MENOR E PULSANTE */}
+            {upcomingVaccinations.length > 0 && (
+              <div 
+                onClick={() => setActiveView('vacinacao')}
+                className="w-full bg-amber-500/10 border border-amber-500/30 rounded-2xl p-3 flex items-center justify-between cursor-pointer hover:bg-amber-500/20 transition-all animate-pulse"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-xl">💉</span>
+                  <p className="text-amber-500 font-black uppercase tracking-widest text-[10px] md:text-xs">
+                    Vacinação à vista: {upcomingVaccinations.length} eventos programados para os próximos 7 dias. <span className="hidden sm:inline">Toque para ver o calendário.</span>
+                  </p>
+                </div>
+                <span className="text-amber-500 text-xs">➔</span>
+              </div>
+            )}
+
+            <div className="w-full grid grid-cols-1 md:grid-cols-3 gap-6 flex-1">
+              {/* BOTÃO MURAL */}
+              <button 
+                onClick={() => setActiveView('mural')}
+                className="group relative h-[200px] md:h-[240px] bg-[#0a0f18]/60 border-4 border-slate-800/50 rounded-[40px] overflow-hidden shadow-2xl transition-all hover:border-indigo-500/50 hover:bg-indigo-950/10 active:scale-95 flex flex-col items-center justify-center gap-4"
+              >
               <div className="w-16 h-16 md:w-20 md:h-20 bg-indigo-600 rounded-[24px] flex items-center justify-center text-3xl md:text-4xl shadow-2xl shadow-indigo-900/40 group-hover:scale-110 transition-transform">
                 📢
               </div>
@@ -233,7 +331,7 @@ const NoticeBoard: React.FC<NoticeBoardProps> = ({ onStartProtocol }) => {
                 <p className="text-indigo-400 font-black uppercase tracking-widest text-[10px] md:text-sm">e Alertas do Gerente</p>
               </div>
               {unreadCount > 0 && (
-                <div className="absolute top-6 right-6 bg-rose-600 text-white text-sm font-black px-4 py-1.5 rounded-full animate-bounce shadow-xl">
+                <div className="absolute top-4 right-4 bg-rose-600 text-white text-[10px] font-black px-3 py-1 rounded-full animate-bounce shadow-xl z-10">
                   {unreadCount} NOVOS
                 </div>
               )}
@@ -242,7 +340,7 @@ const NoticeBoard: React.FC<NoticeBoardProps> = ({ onStartProtocol }) => {
             {/* BOTÃO TAREFAS */}
             <button 
               onClick={() => setActiveView('tarefas')}
-              className="group relative h-[200px] md:h-[300px] bg-[#0a0f18]/60 border-4 border-slate-800/50 rounded-[48px] overflow-hidden shadow-2xl transition-all hover:border-emerald-500/50 hover:bg-emerald-950/10 active:scale-95 flex flex-col items-center justify-center gap-4"
+              className="group relative h-[200px] md:h-[240px] bg-[#0a0f18]/60 border-4 border-slate-800/50 rounded-[40px] overflow-hidden shadow-2xl transition-all hover:border-emerald-500/50 hover:bg-emerald-950/10 active:scale-95 flex flex-col items-center justify-center gap-4"
             >
               <div className="w-16 h-16 md:w-20 md:h-20 bg-[#10b981] rounded-[24px] flex items-center justify-center text-3xl md:text-4xl shadow-2xl shadow-emerald-900/40 group-hover:scale-110 transition-transform">
                 ✅
@@ -251,13 +349,54 @@ const NoticeBoard: React.FC<NoticeBoardProps> = ({ onStartProtocol }) => {
                 <h2 className="text-xl md:text-2xl font-black uppercase tracking-tight text-white mb-1">Tarefas Agenda</h2>
                 <p className="text-[#10b981] font-black uppercase tracking-widest text-[10px] md:text-sm">do Dia de Trabalho</p>
               </div>
-              <div className="absolute top-6 right-6 bg-emerald-600/20 text-[#10b981] text-sm font-black px-4 py-1.5 rounded-full border-2 border-emerald-500/20">
+              <div className="absolute top-4 right-4 bg-emerald-600/20 text-[#10b981] text-[10px] font-black px-3 py-1 rounded-full border border-emerald-500/20 z-10">
                 {activeTasks.length} PENDENTES
               </div>
             </button>
+
+            {/* BOTÃO VACINAÇÃO */}
+            <button 
+              onClick={() => setActiveView('vacinacao')}
+              className="group relative h-[200px] md:h-[240px] bg-[#0a0f18]/60 border-4 border-slate-800/50 rounded-[40px] overflow-hidden shadow-2xl transition-all hover:border-amber-500/50 hover:bg-amber-950/10 active:scale-95 flex flex-col items-center justify-center gap-4"
+            >
+              <div className="w-16 h-16 md:w-20 md:h-20 bg-amber-500 rounded-[24px] flex items-center justify-center text-3xl md:text-4xl shadow-2xl shadow-amber-900/40 group-hover:scale-110 transition-transform">
+                💉
+              </div>
+              <div className="text-center">
+                <h2 className="text-xl md:text-2xl font-black uppercase tracking-tight text-white mb-1">Vacinação</h2>
+                <p className="text-amber-400 font-black uppercase tracking-widest text-[10px] md:text-sm">Calendário Sanitário</p>
+              </div>
+              {upcomingVaccinations.length > 0 && (
+                <div className="absolute top-4 right-4 bg-amber-500 text-[#05070a] text-[10px] font-black px-3 py-1 rounded-full animate-pulse shadow-xl z-10">
+                  {upcomingVaccinations.length} PRÓXIMAS
+                </div>
+              )}
+            </button>
+          </div>
+          </div>
+        ) : activeView === 'vacinacao' ? (
+          <div className="flex-1 flex flex-col max-w-none mx-auto w-full animate-in fade-in slide-in-from-bottom-4 duration-500 overflow-hidden">
+            <div className="flex items-center justify-between mb-4 shrink-0">
+              <button 
+                onClick={() => setActiveView('none')}
+                className="flex items-center gap-2 px-4 py-2 bg-slate-800 text-white rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-slate-700 transition-all active:scale-95"
+              >
+                <span>⬅️</span>
+                <span>Voltar</span>
+              </button>
+            </div>
+            <div className="flex-1 flex flex-col overflow-hidden pb-4">
+              {vacinacaoConfig ? (
+                <VacinacaoCalendar sheep={sheep} groups={groups} plans={plans} config={vacinacaoConfig} />
+              ) : (
+                <div className="flex-1 flex items-center justify-center">
+                  <p className="text-slate-400 font-medium">Nenhum calendário de vacinação configurado.</p>
+                </div>
+              )}
+            </div>
           </div>
         ) : (
-          <div className="flex-1 flex flex-col max-w-6xl mx-auto w-full animate-in fade-in slide-in-from-bottom-4 duration-500 overflow-hidden">
+          <div className="flex-1 flex flex-col max-w-none mx-auto w-full animate-in fade-in slide-in-from-bottom-4 duration-500 overflow-hidden">
             {/* CABEÇALHO DA LISTA COM BOTÃO VOLTAR */}
             <div className="flex items-center justify-between mb-4 shrink-0">
               <button 
