@@ -25,8 +25,12 @@ const VacinacaoForm: React.FC<Props> = ({ onSubmit }) => {
     prenhezMultipla: false,
     reforcoGestacao: false,
     mesAnual: new Date().getMonth() + 1,
-    intervalo5Dias: false,
+    intervalo5Dias: true,
     quadroVisual: true,
+    agruparMensal: true,
+    diaBaseSemana: 3, // Quarta
+    diaBaseOrdem: 2, // 2ª
+    intervaloEntreVacinas: 5,
   });
 
   const handleChange = (field: keyof VacinacaoConfig, value: any) => {
@@ -154,23 +158,79 @@ const VacinacaoForm: React.FC<Props> = ({ onSubmit }) => {
   const renderStep5 = () => (
     <div className="space-y-6 animate-in slide-in-from-right-4">
       <h3 className="text-lg font-black text-slate-800 uppercase border-b pb-2">5. Manejo / Organização</h3>
-      <div className="space-y-4">
-        <div>
-          <label className="block text-xs font-black text-slate-500 uppercase mb-2">Mês da vacinação anual (Ex: Antes da estação de monta):</label>
-          <select className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl font-bold text-sm focus:border-indigo-500 outline-none" value={formData.mesAnual} onChange={e => handleChange('mesAnual', parseInt(e.target.value))}>
-            {['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'].map((m, i) => (
-              <option key={i} value={i + 1}>{m}</option>
-            ))}
-          </select>
+      <div className="space-y-6">
+        <div className="p-6 bg-indigo-50 rounded-[32px] border border-indigo-100 space-y-4">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-8 h-8 bg-indigo-600 rounded-xl flex items-center justify-center text-white text-sm">🗓️</div>
+            <h4 className="text-sm font-black text-indigo-900 uppercase">Agrupamento de Vacinação</h4>
+          </div>
+          <p className="text-xs text-indigo-700 font-medium leading-relaxed">
+            Para otimizar o manejo, o sistema pode agrupar todas as vacinas do mês em dias específicos, evitando que você tenha que reunir o rebanho várias vezes.
+          </p>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+            <div>
+              <label className="block text-[10px] font-black text-indigo-400 uppercase mb-1.5 ml-1">Dia Base do Mês:</label>
+              <div className="flex gap-2">
+                <select 
+                  className="flex-1 p-3 bg-white border border-indigo-200 rounded-xl font-bold text-xs focus:border-indigo-500 outline-none"
+                  value={formData.diaBaseOrdem}
+                  onChange={e => handleChange('diaBaseOrdem', parseInt(e.target.value))}
+                >
+                  <option value={1}>1ª</option>
+                  <option value={2}>2ª</option>
+                  <option value={3}>3ª</option>
+                  <option value={4}>4ª</option>
+                </select>
+                <select 
+                  className="flex-[2] p-3 bg-white border border-indigo-200 rounded-xl font-bold text-xs focus:border-indigo-500 outline-none"
+                  value={formData.diaBaseSemana}
+                  onChange={e => handleChange('diaBaseSemana', parseInt(e.target.value))}
+                >
+                  <option value={0}>Domingo</option>
+                  <option value={1}>Segunda</option>
+                  <option value={2}>Terça</option>
+                  <option value={3}>Quarta</option>
+                  <option value={4}>Quinta</option>
+                  <option value={5}>Sexta</option>
+                  <option value={6}>Sábado</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <label className="block text-[10px] font-black text-indigo-400 uppercase mb-1.5 ml-1">Intervalo entre Vacinas:</label>
+              <div className="flex items-center gap-2">
+                <input 
+                  type="number" 
+                  min={1} 
+                  max={15}
+                  className="w-full p-3 bg-white border border-indigo-200 rounded-xl font-bold text-xs focus:border-indigo-500 outline-none"
+                  value={formData.intervaloEntreVacinas}
+                  onChange={e => handleChange('intervaloEntreVacinas', parseInt(e.target.value))}
+                />
+                <span className="text-[10px] font-bold text-indigo-400 uppercase">Dias</span>
+              </div>
+            </div>
+          </div>
         </div>
-        <label className="flex items-center gap-3 p-4 bg-slate-50 rounded-2xl cursor-pointer hover:bg-slate-100 transition-all">
-          <input type="checkbox" className="w-5 h-5 accent-indigo-600" checked={formData.intervalo5Dias} onChange={e => handleChange('intervalo5Dias', e.target.checked)} />
-          <span className="text-sm font-bold text-slate-700">Deseja aplicar vacinas diferentes com intervalo de 5 dias entre elas? (Evita estresse excessivo)</span>
-        </label>
-        <label className="flex items-center gap-3 p-4 bg-slate-50 rounded-2xl cursor-pointer hover:bg-slate-100 transition-all">
-          <input type="checkbox" className="w-5 h-5 accent-indigo-600" checked={formData.quadroVisual} onChange={e => handleChange('quadroVisual', e.target.checked)} />
-          <span className="text-sm font-bold text-slate-700">Gerar quadro visual didático para o curral?</span>
-        </label>
+
+        <div className="space-y-3">
+          <label className="flex items-center gap-3 p-4 bg-slate-50 rounded-2xl cursor-pointer hover:bg-slate-100 transition-all">
+            <input type="checkbox" className="w-5 h-5 accent-indigo-600" checked={formData.agruparMensal} onChange={e => handleChange('agruparMensal', e.target.checked)} />
+            <div className="flex flex-col">
+              <span className="text-sm font-bold text-slate-700">Ativar agrupamento estratégico (Agrupar Lotes)?</span>
+              <span className="text-[10px] text-slate-500 font-medium">Concentra as vacinas do mês em dias específicos para facilitar o manejo.</span>
+            </div>
+          </label>
+          <label className="flex items-center gap-3 p-4 bg-slate-50 rounded-2xl cursor-pointer hover:bg-slate-100 transition-all">
+            <input type="checkbox" className="w-5 h-5 accent-indigo-600" checked={formData.intervalo5Dias} onChange={e => handleChange('intervalo5Dias', e.target.checked)} />
+            <span className="text-sm font-bold text-slate-700">Evitar vacinação em finais de semana? (Sáb/Dom)</span>
+          </label>
+          <label className="flex items-center gap-3 p-4 bg-slate-50 rounded-2xl cursor-pointer hover:bg-slate-100 transition-all">
+            <input type="checkbox" className="w-5 h-5 accent-indigo-600" checked={formData.quadroVisual} onChange={e => handleChange('quadroVisual', e.target.checked)} />
+            <span className="text-sm font-bold text-slate-700">Gerar quadro visual didático para o curral?</span>
+          </label>
+        </div>
       </div>
     </div>
   );

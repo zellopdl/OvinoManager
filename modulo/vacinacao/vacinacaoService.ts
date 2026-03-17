@@ -24,6 +24,10 @@ const mapFromDB = (data: any): VacinacaoConfig => ({
   mesAnual: data.mes_anual || 1,
   intervalo5Dias: data.intervalo_5_dias,
   quadroVisual: data.quadro_visual,
+  agruparMensal: data.agrupar_mensal,
+  diaBaseSemana: data.dia_base_semana || 3,
+  diaBaseOrdem: data.dia_base_ordem || 2,
+  intervaloEntreVacinas: data.intervalo_entre_vacinas || 5,
 });
 
 // Helper to convert camelCase to DB snake_case
@@ -47,6 +51,10 @@ const mapToDB = (config: VacinacaoConfig): any => ({
   mes_anual: config.mesAnual,
   intervalo_5_dias: config.intervalo5Dias,
   quadro_visual: config.quadroVisual,
+  agrupar_mensal: config.agruparMensal,
+  dia_base_semana: config.diaBaseSemana,
+  dia_base_ordem: config.diaBaseOrdem,
+  intervalo_entre_vacinas: config.intervaloEntreVacinas,
   updated_at: new Date().toISOString(),
 });
 
@@ -103,17 +111,25 @@ export const vacinacaoService = {
         .select('*')
         .order('created_at', { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
 
-      if (error && error.code !== 'PGRST116') { // PGRST116 is "no rows returned"
+      if (error) {
         console.error('Erro ao buscar configuração de vacinação:', error);
-        return null;
+        // Fallback to local if DB fails
+        const local = localStorage.getItem('ovi_vacinacao_config');
+        return local ? JSON.parse(local) : null;
       }
 
-      return data ? mapFromDB(data) : null;
+      if (!data) {
+        const local = localStorage.getItem('ovi_vacinacao_config');
+        return local ? JSON.parse(local) : null;
+      }
+
+      return mapFromDB(data);
     } catch (err) {
       console.error('Exceção ao buscar configuração de vacinação:', err);
-      return null;
+      const local = localStorage.getItem('ovi_vacinacao_config');
+      return local ? JSON.parse(local) : null;
     }
   },
 
@@ -130,7 +146,7 @@ export const vacinacaoService = {
         .select('id')
         .order('created_at', { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle(); // Use maybeSingle to avoid error if no rows
 
       if (existing) {
         const { error } = await supabase
@@ -145,8 +161,9 @@ export const vacinacaoService = {
         if (error) throw error;
       }
     } catch (err) {
-      console.error('Erro ao salvar configuração de vacinação:', err);
-      throw err;
+      console.error('Erro ao salvar no Supabase, salvando localmente:', err);
+      // Fallback to localStorage if DB fails (e.g. missing columns)
+      localStorage.setItem('ovi_vacinacao_config', JSON.stringify(config));
     }
   },
 

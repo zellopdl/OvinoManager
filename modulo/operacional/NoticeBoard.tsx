@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Manejo, StatusManejo, ProtocoloManejo, Sheep, Group, BreedingPlan } from '../../types';
+import { Manejo, StatusManejo, ProtocoloManejo, Sheep, Group, BreedingPlan, Paddock } from '../../types';
 import { manejoService } from '../manejo/manejoService';
 import { avisoService, Aviso } from './avisoService';
 import { vacinacaoService } from '../vacinacao/vacinacaoService';
@@ -14,9 +14,10 @@ interface NoticeBoardProps {
   sheep: Sheep[];
   groups: Group[];
   plans: BreedingPlan[];
+  paddocks: Paddock[];
 }
 
-const NoticeBoard: React.FC<NoticeBoardProps> = ({ onStartProtocol, sheep, groups, plans }) => {
+const NoticeBoard: React.FC<NoticeBoardProps> = ({ onStartProtocol, sheep, groups, plans, paddocks }) => {
   const [manejos, setManejos] = useState<Manejo[]>([]);
   const [avisos, setAvisos] = useState<Aviso[]>([]);
   const [vacinacaoConfig, setVacinacaoConfig] = useState<VacinacaoConfig | null>(null);
@@ -387,7 +388,7 @@ const NoticeBoard: React.FC<NoticeBoardProps> = ({ onStartProtocol, sheep, group
             </div>
             <div className="flex-1 flex flex-col overflow-hidden pb-4">
               {vacinacaoConfig ? (
-                <VacinacaoCalendar sheep={sheep} groups={groups} plans={plans} config={vacinacaoConfig} />
+                <VacinacaoCalendar sheep={sheep} groups={groups} plans={plans} paddocks={paddocks} config={vacinacaoConfig} />
               ) : (
                 <div className="flex-1 flex items-center justify-center">
                   <p className="text-slate-400 font-medium">Nenhum calendário de vacinação configurado.</p>

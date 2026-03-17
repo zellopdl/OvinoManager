@@ -271,7 +271,7 @@ const App: React.FC = () => {
       case 'charts': return <ChartsView sheep={safeSheep} breeds={breeds} groups={groups} />;
       case 'guia': return <KnowledgeAssistant />;
       case 'manejo': return <ManejoManager sheep={safeSheep} paddocks={paddocks} groups={groups} onRefreshSheep={loadInitialData} managerPassword={managerPassword} />;
-      case 'vacinacao': return <VacinacaoManager sheep={safeSheep} groups={groups} plans={breedingPlans} />;
+      case 'vacinacao': return <VacinacaoManager sheep={safeSheep} groups={groups} plans={breedingPlans} paddocks={paddocks} />;
       case 'weight': return <WeightManager sheep={safeSheep} groups={groups} paddocks={paddocks} onRefresh={loadInitialData} />;
       case 'ecc': return <ECCManager sheep={safeSheep} groups={groups} paddocks={paddocks} onRefresh={loadInitialData} />;
       case 'famacha': return <FamachaManager sheep={safeSheep} groups={groups} paddocks={paddocks} onRefresh={loadInitialData} />;
@@ -290,7 +290,7 @@ const App: React.FC = () => {
             existingSheep={safeSheep} />
         );
       case 'racas': return <EntityManager title="Raças" tableName="racas" icon="🏷️" initialData={breeds} onRefresh={loadInitialData} sheep={safeSheep} />;
-      case 'noticeboard': return <NoticeBoard sheep={safeSheep} groups={groups} plans={breedingPlans} onStartProtocol={(task) => {
+      case 'noticeboard': return <NoticeBoard sheep={safeSheep} groups={groups} plans={breedingPlans} paddocks={paddocks} onStartProtocol={(task) => {
         setActiveProtocolTask(task);
         if (task.protocolo === ProtocoloManejo.PESAGEM) setActiveTab('weight');
         else if (task.protocolo === ProtocoloManejo.FAMACHA) setActiveTab('famacha');
@@ -379,6 +379,7 @@ const App: React.FC = () => {
       sheep={sheep || []}
       groups={groups}
       plans={breedingPlans}
+      paddocks={paddocks}
       onStartProtocol={(task) => {
       setActiveProtocolTask(task);
       // Mapeia o protocolo para a aba correta

@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Sheep, Group, BreedingPlan } from '../../types';
+import { Sheep, Group, BreedingPlan, Paddock } from '../../types';
 import { VacinacaoConfig } from './VacinacaoManager';
 import { vacinacaoService } from './vacinacaoService';
 
@@ -7,6 +7,7 @@ interface Props {
   sheep: Sheep[];
   groups: Group[];
   plans: BreedingPlan[];
+  paddocks: Paddock[];
   config: VacinacaoConfig;
 }
 
@@ -17,7 +18,7 @@ interface VacinacaoEvent {
   animals: Sheep[];
 }
 
-const VacinacaoCalendar: React.FC<Props> = ({ sheep, groups, plans, config }) => {
+const VacinacaoCalendar: React.FC<Props> = ({ sheep, groups, plans, paddocks, config }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [confirmedVaccinations, setConfirmedVaccinations] = useState<string[]>([]);
@@ -44,68 +45,134 @@ const VacinacaoCalendar: React.FC<Props> = ({ sheep, groups, plans, config }) =>
   };
 
   const events = useMemo(() => {
-    const evts: Record<string, VacinacaoEvent[]> = {};
+    try {
+      const evts: Record<string, VacinacaoEvent[]> = {};
 
-    const addEvt = (dateStr: string, type: VacinacaoEvent['type'], title: string, vaccine: string, animal: Sheep) => {
-      if (!evts[dateStr]) evts[dateStr] = [];
-      let existing = evts[dateStr].find(e => e.title === title);
-      if (!existing) {
-        existing = { type, title, vaccine, animals: [] };
-        evts[dateStr].push(existing);
-      }
-      existing.animals.push(animal);
-    };
-
-    const addDays = (dateStr: string, days: number) => {
-      const d = new Date(dateStr + 'T12:00:00Z');
-      d.setDate(d.getDate() + days);
-      return d.toISOString().split('T')[0];
-    };
-
-    // 1. Cordeiros
-    sheep.forEach(s => {
-      if (s.nascimento) {
-        addEvt(addDays(s.nascimento, 40), 'cordeiro', '1ª Dose Clostridiose (Cordeiros)', `Clostridiose (${config.tipoClostridiose} cepas)`, s);
-        addEvt(addDays(s.nascimento, 70), 'cordeiro', 'Reforço Clostridiose (Cordeiros)', `Clostridiose (${config.tipoClostridiose} cepas)`, s);
-        if (config.hasEctima) {
-          addEvt(addDays(s.nascimento, 15), 'cordeiro', 'Vacina Ectima Contagioso', 'Ectima', s);
+      const addEvt = (dateStr: string, type: VacinacaoEvent['type'], title: string, vaccine: string, animal: Sheep) => {
+        if (!evts[dateStr]) evts[dateStr] = [];
+        let existing = evts[dateStr].find(e => e.vaccine === vaccine && e.type === type);
+        if (!existing) {
+          existing = { type, title, vaccine, animals: [] };
+          evts[dateStr].push(existing);
         }
-        if (config.outrasVacinas) {
-          addEvt(addDays(s.nascimento, 90), 'cordeiro', '1ª Dose Outras Vacinas', config.outrasVacinas, s);
-          addEvt(addDays(s.nascimento, 120), 'cordeiro', '2ª Dose Outras Vacinas', config.outrasVacinas, s);
+        if (!existing.animals.find(a => a.id === animal.id)) {
+          existing.animals.push(animal);
         }
-      }
-    });
+      };
 
-    // 2. Quarentena
-    const quarentenaGroup = groups.find(g => g.nome.toLowerCase().includes('quarentena'));
-    if (quarentenaGroup) {
-      sheep.filter(s => s.grupoId === quarentenaGroup.id).forEach(s => {
-        const d0 = s.createdAt ? s.createdAt.split('T')[0] : new Date().toISOString().split('T')[0];
-        addEvt(d0, 'quarentena', 'Protocolo Entrada (Dia 0)', 'Vermífugo + Clostridiose', s);
-        addEvt(addDays(d0, 30), 'quarentena', 'Protocolo Entrada (Dia 30)', 'Reforço Clostridiose', s);
+      const addDays = (dateStr: string, days: number) => {
+        const d = new Date(dateStr + 'T12:00:00Z');
+        d.setDate(d.getDate() + days);
+        return d.toISOString().split('T')[0];
+      };
+
+      // Helper para encontrar o dia base do mês (ex: 2ª Quarta)
+      const getBaseDayOfMonth = (year: number, month: number, ordem: number, diaSemana: number) => {
+        const firstDay = new Date(year, month, 1);
+        let count = 0;
+        for (let d = 1; d <= 31; d++) {
+          const date = new Date(year, month, d);
+          if (date.getMonth() !== month) break;
+          if (date.getDay() === diaSemana) {
+            count++;
+            if (count === ordem) return date;
+          }
+        }
+        return new Date(year, month, 15); // Fallback
+      };
+
+      // Helper para ajustar para dia útil (evita Sáb/Dom)
+      const adjustToWorkDay = (date: Date) => {
+        const d = new Date(date);
+        if (d.getDay() === 6) d.setDate(d.getDate() + 2); // Sáb -> Seg
+        else if (d.getDay() === 0) d.setDate(d.getDate() + 1); // Dom -> Seg
+        return d;
+      };
+
+      // Helper para adicionar dias pulando finais de semana
+      const addWorkDays = (startDate: Date, days: number) => {
+        let date = new Date(startDate);
+        let added = 0;
+        while (added < days) {
+          date.setDate(date.getDate() + 1);
+          if (date.getDay() !== 0 && date.getDay() !== 6) {
+            added++;
+          }
+        }
+        return date;
+      };
+
+      // 1. Gerar datas "naturais" primeiro
+      const naturalEvents: { date: string, type: VacinacaoEvent['type'], title: string, vaccine: string, animal: Sheep }[] = [];
+
+      sheep.forEach(s => {
+        if (s.nascimento) {
+          naturalEvents.push({ date: addDays(s.nascimento, 40), type: 'cordeiro', title: 'Vacinação Cordeiros', vaccine: `Clostridiose (${config.tipoClostridiose} cepas)`, animal: s });
+          naturalEvents.push({ date: addDays(s.nascimento, 70), type: 'cordeiro', title: 'Reforço Cordeiros', vaccine: `Clostridiose (${config.tipoClostridiose} cepas)`, animal: s });
+          if (config.hasEctima) {
+            naturalEvents.push({ date: addDays(s.nascimento, 15), type: 'cordeiro', title: 'Vacina Ectima', vaccine: 'Ectima', animal: s });
+          }
+        }
       });
-    }
 
-    // 3. Pré-Monta & Prenhas
-    plans.forEach(p => {
-      if (p.dataInicioMonta) {
-        const dPre = addDays(p.dataInicioMonta, -15);
-        const planSheepIds = p.ovelhas?.map(o => o.eweId) || [];
-        sheep.filter(s => planSheepIds.includes(s.id)).forEach(s => {
-          addEvt(dPre, 'pre-monta', `Pré-Monta: ${p.nome}`, `Clostridiose + Reprodutivas`, s);
-        });
-
-        // Prenhas (Estimativa 100 dias após cobertura média)
-        const prenhasIds = p.ovelhas?.filter(o => o.ciclo1 === 'prenha' || o.ciclo2 === 'prenha' || o.ciclo3 === 'prenha').map(o => o.eweId) || [];
-        sheep.filter(s => prenhasIds.includes(s.id)).forEach(s => {
-          const d100 = addDays(p.dataInicioMonta, 115); // 15 dias de cio + 100 de gestação
-          addEvt(d100, 'prenha', `Gestantes (100 dias)`, `Clostridiose (${config.tipoClostridiose} cepas)`, s);
+      const quarentenaGroup = groups.find(g => g.nome.toLowerCase().includes('quarentena'));
+      if (quarentenaGroup) {
+        sheep.filter(s => s.grupoId === quarentenaGroup.id).forEach(s => {
+          const d0 = s.createdAt ? s.createdAt.split('T')[0] : new Date().toISOString().split('T')[0];
+          naturalEvents.push({ date: d0, type: 'quarentena', title: 'Protocolo Entrada', vaccine: 'Vermífugo + Clostridiose', animal: s });
+          naturalEvents.push({ date: addDays(d0, 30), type: 'quarentena', title: 'Reforço Entrada', vaccine: 'Reforço Clostridiose', animal: s });
         });
       }
-    });
 
-    return evts;
+      plans.forEach(p => {
+        if (p.dataInicioMonta) {
+          const dPre = addDays(p.dataInicioMonta, -15);
+          const planSheepIds = p.ovelhas?.map(o => o.eweId) || [];
+          sheep.filter(s => planSheepIds.includes(s.id)).forEach(s => {
+            naturalEvents.push({ date: dPre, type: 'pre-monta', title: 'Pré-Monta', vaccine: `Clostridiose + Reprodutivas`, animal: s });
+          });
+
+          const prenhasIds = p.ovelhas?.filter(o => o.ciclo1 === 'prenha' || o.ciclo2 === 'prenha' || o.ciclo3 === 'prenha').map(o => o.eweId) || [];
+          sheep.filter(s => prenhasIds.includes(s.id)).forEach(s => {
+            const d100 = addDays(p.dataInicioMonta, 115);
+            naturalEvents.push({ date: d100, type: 'prenha', title: 'Gestantes (100d)', vaccine: `Clostridiose (${config.tipoClostridiose} cepas)`, animal: s });
+          });
+        }
+      });
+
+      // 2. Aplicar Agrupamento se configurado
+      if (config.agruparMensal) {
+        naturalEvents.forEach(evt => {
+          const date = new Date(evt.date + 'T12:00:00Z');
+          const year = date.getFullYear();
+          const month = date.getMonth();
+          
+          // Calcula o dia base do mês para este evento
+          let baseDay = getBaseDayOfMonth(year, month, config.diaBaseOrdem || 2, config.diaBaseSemana || 3);
+          baseDay = adjustToWorkDay(baseDay);
+
+          const monthVaccines = Array.from(new Set(naturalEvents
+            .filter(e => {
+              const d = new Date(e.date + 'T12:00:00Z');
+              return d.getFullYear() === year && d.getMonth() === month;
+            })
+            .map(e => e.vaccine)
+          )).sort();
+
+          const vaccineIndex = monthVaccines.indexOf(evt.vaccine);
+          const finalDate = vaccineIndex === 0 ? baseDay : addWorkDays(baseDay, vaccineIndex * (config.intervaloEntreVacinas || 5));
+          
+          addEvt(finalDate.toISOString().split('T')[0], evt.type, evt.title, evt.vaccine, evt.animal);
+        });
+      } else {
+        naturalEvents.forEach(evt => addEvt(evt.date, evt.type, evt.title, evt.vaccine, evt.animal));
+      }
+
+      return evts;
+    } catch (err) {
+      console.error("Erro ao processar eventos do calendário:", err);
+      return {};
+    }
   }, [sheep, groups, plans, config]);
 
   const getDaysInMonth = (year: number, month: number) => new Date(year, month + 1, 0).getDate();
@@ -143,8 +210,16 @@ const VacinacaoCalendar: React.FC<Props> = ({ sheep, groups, plans, config }) =>
   return (
     <div className="bg-white rounded-[32px] border border-slate-200 shadow-sm overflow-hidden animate-in fade-in flex flex-col h-full">
       {/* Header */}
-      <div className="flex items-center justify-between p-3 md:p-4 border-b border-slate-100 shrink-0">
-        <h3 className="text-base md:text-lg font-black text-slate-800 uppercase">Calendário Sanitário</h3>
+      <div className="flex flex-col sm:flex-row items-center justify-between p-3 md:p-4 border-b border-slate-100 shrink-0 gap-3">
+        <div className="flex items-center gap-3">
+          <h3 className="text-base md:text-lg font-black text-slate-800 uppercase">Calendário Sanitário</h3>
+          {!config.agruparMensal && (
+            <div className="hidden lg:flex items-center gap-2 px-3 py-1 bg-amber-50 border border-amber-100 rounded-lg">
+              <span className="text-amber-500 text-[10px]">💡</span>
+              <span className="text-[9px] font-black text-amber-700 uppercase">Dica: Agrupe vacinas em "Refazer Formulário"</span>
+            </div>
+          )}
+        </div>
         <div className="flex items-center gap-4">
           <button onClick={prevMonth} className="p-1.5 hover:bg-slate-100 rounded-full transition-colors">
             <svg className="w-5 h-5 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
@@ -178,6 +253,13 @@ const VacinacaoCalendar: React.FC<Props> = ({ sheep, groups, plans, config }) =>
             const isToday = dateStr === new Date().toISOString().split('T')[0];
             const isSelected = selectedDate === dateStr;
 
+            const confirmedCount = dayEvents.filter(evt => 
+              confirmedVaccinations.includes(`${dateStr}_${evt.vaccine}_${evt.type}`)
+            ).length;
+            
+            const isFullyConfirmed = dayEvents.length > 0 && confirmedCount === dayEvents.length;
+            const isPartiallyConfirmed = dayEvents.length > 0 && confirmedCount > 0 && confirmedCount < dayEvents.length;
+
             return (
               <button
                 key={day}
@@ -185,21 +267,33 @@ const VacinacaoCalendar: React.FC<Props> = ({ sheep, groups, plans, config }) =>
                 className={`rounded-lg md:rounded-xl border flex flex-col items-center justify-start p-1 transition-all relative overflow-hidden group h-full
                   ${isSelected ? 'border-indigo-500 bg-indigo-50 shadow-sm z-10' : 'border-slate-200 hover:border-indigo-300 hover:bg-slate-50'}
                   ${isToday && !isSelected ? 'bg-indigo-50/50 border-indigo-200' : ''}
+                  ${isFullyConfirmed ? 'bg-emerald-50/30' : ''}
                 `}
               >
-                <span className={`text-[10px] md:text-sm font-bold ${isToday ? 'text-indigo-600' : 'text-slate-600'}`}>
-                  {day}
-                </span>
+                <div className="flex items-center justify-between w-full px-0.5">
+                  <span className={`text-[10px] md:text-sm font-bold ${isToday ? 'text-indigo-600' : 'text-slate-600'}`}>
+                    {day}
+                  </span>
+                  {isFullyConfirmed && (
+                    <span className="text-[10px] md:text-xs text-emerald-500 animate-in zoom-in">✓</span>
+                  )}
+                  {isPartiallyConfirmed && (
+                    <span className="text-[10px] md:text-xs text-amber-400 opacity-70">✓</span>
+                  )}
+                </div>
                 
                 {/* Event Indicators */}
                 <div className="flex flex-wrap justify-center gap-0.5 mt-auto w-full pb-0.5">
-                  {dayEvents.map((evt, idx) => (
-                    <div 
-                      key={idx} 
-                      className={`w-1 h-1 md:w-1.5 md:h-1.5 rounded-full ${getTypeColor(evt.type)}`}
-                      title={evt.title}
-                    ></div>
-                  ))}
+                  {dayEvents.map((evt, idx) => {
+                    const isConfirmed = confirmedVaccinations.includes(`${dateStr}_${evt.vaccine}_${evt.type}`);
+                    return (
+                      <div 
+                        key={idx} 
+                        className={`w-1 h-1 md:w-1.5 md:h-1.5 rounded-full ${isConfirmed ? 'bg-emerald-400 ring-1 ring-emerald-200' : getTypeColor(evt.type)}`}
+                        title={`${evt.title}${isConfirmed ? ' (Concluído)' : ''}`}
+                      ></div>
+                    );
+                  })}
                 </div>
               </button>
             );
@@ -258,27 +352,58 @@ const VacinacaoCalendar: React.FC<Props> = ({ sheep, groups, plans, config }) =>
                     </div>
 
                     <div className="bg-white p-4 rounded-xl border border-slate-100 mb-4">
-                      <span className="block text-xs font-black text-slate-400 uppercase mb-3">Animais Alvo (Por Grupo)</span>
+                      <span className="block text-xs font-black text-slate-400 uppercase mb-3">Materiais Necessários</span>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="bg-emerald-50 p-3 rounded-lg border border-emerald-100">
+                          <span className="block text-[10px] font-black text-emerald-600 uppercase mb-1">Doses</span>
+                          <span className="text-lg font-black text-emerald-700">{evt.animals.length} doses</span>
+                        </div>
+                        <div className="bg-blue-50 p-3 rounded-lg border border-blue-100">
+                          <span className="block text-[10px] font-black text-blue-600 uppercase mb-1">Agulhas</span>
+                          <span className="text-lg font-black text-blue-700">{Math.ceil(evt.animals.length / 10)} unid.</span>
+                          <span className="block text-[8px] text-blue-400 font-bold uppercase">(Troca a cada 10)</span>
+                        </div>
+                        <div className="col-span-2 bg-amber-50 p-3 rounded-lg border border-amber-100 flex items-center gap-3">
+                          <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-xl shadow-sm">💉</div>
+                          <div>
+                            <span className="block text-[10px] font-black text-amber-600 uppercase">Seringa / Aplicador</span>
+                            <span className="text-xs font-bold text-amber-700">Verificar calibração para {evt.vaccine}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-white p-4 rounded-xl border border-slate-100 mb-4">
+                      <span className="block text-xs font-black text-slate-400 uppercase mb-3">Lote de Animais (Por Piquete e Grupo)</span>
                       <div className="space-y-4">
                         {Object.entries(
                           evt.animals.reduce((acc, animal) => {
-                            const groupId = animal.grupoId || 'sem-grupo';
-                            if (!acc[groupId]) acc[groupId] = [];
-                            acc[groupId].push(animal);
+                            const key = `${animal.piqueteId || 'sem-piquete'}_${animal.grupoId || 'sem-grupo'}`;
+                            if (!acc[key]) acc[key] = [];
+                            acc[key].push(animal);
                             return acc;
                           }, {} as Record<string, typeof evt.animals>)
-                        ).map(([groupId, animalsInGroup]) => {
-                          const groupName = groups.find(g => g.id === groupId)?.nome || 'Sem Grupo';
+                        ).map(([key, animalsInLot]) => {
+                          const [pId, gId] = key.split('_');
+                          const paddockName = paddocks.find(p => p.id === pId)?.piquete || 'Sem Piquete';
+                          const groupName = groups.find(g => g.id === gId)?.nome || 'Sem Grupo';
+                          
                           return (
-                            <div key={groupId} className="space-y-2">
-                              <h5 className="text-sm font-bold text-slate-700 border-b border-slate-100 pb-1">
-                                📍 {groupName} <span className="text-slate-400 text-xs font-medium">({animalsInGroup.length} cabeças)</span>
-                              </h5>
-                              <div className="flex flex-wrap gap-2">
-                                {animalsInGroup.map(a => (
-                                  <span key={a.id} className="px-3 py-1 bg-slate-100 text-slate-600 rounded-lg text-xs font-bold">
-                                    {a.brinco} - {a.nome}
-                                  </span>
+                            <div key={key} className="space-y-2 bg-slate-50/50 p-3 rounded-xl border border-slate-100">
+                              <div className="flex justify-between items-center border-b border-slate-200 pb-1 mb-2">
+                                <h5 className="text-xs font-black text-indigo-600 uppercase">
+                                  📍 {paddockName} | 👥 {groupName}
+                                </h5>
+                                <span className="text-[10px] font-bold text-slate-400 uppercase">
+                                  {animalsInLot.length} animais
+                                </span>
+                              </div>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                {animalsInLot.map(a => (
+                                  <div key={a.id} className="flex items-center gap-2 px-2 py-1.5 bg-white rounded-lg border border-slate-100 text-[10px] font-bold text-slate-600">
+                                    <span className="w-8 text-indigo-500">#{a.brinco}</span>
+                                    <span className="truncate">{a.nome}</span>
+                                  </div>
                                 ))}
                               </div>
                             </div>
@@ -288,19 +413,23 @@ const VacinacaoCalendar: React.FC<Props> = ({ sheep, groups, plans, config }) =>
                     </div>
 
                     {/* Botão de Confirmação */}
-                    <div className="mt-4 flex justify-end">
+                    <div className="mt-8">
                       {confirmedVaccinations.includes(`${selectedDate}_${evt.vaccine}_${evt.type}`) ? (
-                        <div className="flex items-center gap-2 text-emerald-600 font-bold bg-emerald-50 px-4 py-2 rounded-xl">
-                          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                          Vacinação Confirmada
+                        <div className="w-full py-4 bg-emerald-100 text-emerald-700 rounded-2xl font-black text-center uppercase tracking-widest flex items-center justify-center gap-2 border-2 border-emerald-200">
+                          <span className="text-2xl">✅</span> VACINAÇÃO CONCLUÍDA
                         </div>
                       ) : (
                         <button
-                          onClick={() => handleConfirm(selectedDate, evt.vaccine, evt.type)}
+                          onClick={() => handleConfirm(selectedDate!, evt.vaccine, evt.type)}
                           disabled={isConfirming}
-                          className="flex items-center gap-2 bg-indigo-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-indigo-700 transition-colors disabled:opacity-50"
+                          className="w-full py-5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 text-white rounded-2xl font-black uppercase tracking-widest transition-all shadow-xl shadow-indigo-200 active:scale-95 flex items-center justify-center gap-3 border-b-4 border-indigo-800"
                         >
-                          {isConfirming ? 'Confirmando...' : 'Confirmar Vacinação'}
+                          {isConfirming ? (
+                            <div className="w-6 h-6 border-3 border-white/30 border-t-white rounded-full animate-spin" />
+                          ) : (
+                            <span className="text-2xl">💉</span>
+                          )}
+                          <span className="text-lg">CONFIRMAR ADMINISTRAÇÃO</span>
                         </button>
                       )}
                     </div>

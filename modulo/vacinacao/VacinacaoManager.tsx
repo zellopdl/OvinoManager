@@ -3,7 +3,7 @@ import VacinacaoForm from './VacinacaoForm';
 import VacinacaoBoard from './VacinacaoBoard';
 import VacinacaoCalendar from './VacinacaoCalendar';
 import { vacinacaoService } from './vacinacaoService';
-import { Sheep, Group, BreedingPlan } from '../../types';
+import { Sheep, Group, BreedingPlan, Paddock } from '../../types';
 
 export interface VacinacaoConfig {
   // 1. Localização / Epidemiologia
@@ -34,17 +34,25 @@ export interface VacinacaoConfig {
   mesAnual: number; // 1-12
   intervalo5Dias: boolean;
   quadroVisual: boolean;
+  agruparMensal: boolean;
+  diaBaseSemana: number; // 0-6
+  diaBaseOrdem: number; // 1-4
+  intervaloEntreVacinas: number;
 }
 
 interface Props {
   sheep: Sheep[];
   groups: Group[];
   plans: BreedingPlan[];
+  paddocks: Paddock[];
 }
 
-const VacinacaoManager: React.FC<Props> = ({ sheep, groups, plans }) => {
+const VacinacaoManager: React.FC<Props> = ({ sheep, groups, plans, paddocks }) => {
   const [config, setConfig] = useState<VacinacaoConfig | null>(null);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [showSuccess, setShowSuccess] = useState(false);
   const [showConfirmReset, setShowConfirmReset] = useState(false);
   const [viewMode, setViewMode] = useState<'board' | 'calendar'>('board');
 
@@ -65,11 +73,20 @@ const VacinacaoManager: React.FC<Props> = ({ sheep, groups, plans }) => {
   }, []);
 
   const handleConfigSubmit = async (newConfig: VacinacaoConfig) => {
+    console.log("Submetendo nova configuração:", newConfig);
+    setSaving(true);
+    setError(null);
     try {
       await vacinacaoService.saveConfig(newConfig);
+      console.log("Configuração salva com sucesso!");
       setConfig(newConfig);
-    } catch (err) {
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 3000);
+    } catch (err: any) {
       console.error("Erro ao salvar o calendário:", err);
+      setError("Não foi possível salvar as configurações. Verifique sua conexão ou tente novamente.");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -151,12 +168,34 @@ const VacinacaoManager: React.FC<Props> = ({ sheep, groups, plans }) => {
         </div>
       )}
 
+      {showSuccess && (
+        <div className="bg-emerald-50 border border-emerald-100 p-4 rounded-2xl text-emerald-600 text-sm font-bold animate-in fade-in slide-in-from-top-2">
+          ✅ Calendário gerado com sucesso!
+        </div>
+      )}
+
+      {error && (
+        <div className="bg-rose-50 border border-rose-100 p-4 rounded-2xl text-rose-600 text-sm font-bold animate-in fade-in slide-in-from-top-2">
+          ⚠️ {error}
+        </div>
+      )}
+
       {!config ? (
-        <VacinacaoForm onSubmit={handleConfigSubmit} />
+        <div className={saving ? 'opacity-50 pointer-events-none' : ''}>
+          <VacinacaoForm onSubmit={handleConfigSubmit} />
+          {saving && (
+            <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-white/50 backdrop-blur-[2px]">
+              <div className="bg-white p-8 rounded-[32px] shadow-2xl flex flex-col items-center gap-4">
+                <div className="w-12 h-12 border-4 border-slate-100 border-t-indigo-600 rounded-full animate-spin"></div>
+                <p className="text-sm font-black text-slate-800 uppercase tracking-widest">Salvando Calendário...</p>
+              </div>
+            </div>
+          )}
+        </div>
       ) : viewMode === 'board' ? (
         <VacinacaoBoard config={config} sheep={sheep} groups={groups} />
       ) : (
-        <VacinacaoCalendar sheep={sheep} groups={groups} plans={plans} config={config} />
+        <VacinacaoCalendar sheep={sheep} groups={groups} plans={plans} paddocks={paddocks} config={config} />
       )}
     </div>
   );

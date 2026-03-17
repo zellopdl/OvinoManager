@@ -120,10 +120,45 @@ const VacinacaoBoard: React.FC<Props> = ({ config, sheep, groups }) => {
               <h3 className="text-2xl md:text-3xl font-black text-slate-800 uppercase tracking-tighter">📅 Calendário do Plantel</h3>
               <p className="text-slate-400 font-bold uppercase tracking-widest text-[10px] mt-2">Rotina para animais já sincronizados</p>
             </div>
-            <div className="text-left md:text-right">
+            <div className="flex flex-col items-end gap-2">
               <span className="inline-block px-4 py-2 bg-slate-100 text-slate-600 rounded-xl font-black text-xs uppercase">Mês Base: {mesAnualNome}</span>
+              {config.agruparMensal ? (
+                <span className="inline-block px-4 py-2 bg-indigo-100 text-indigo-700 rounded-xl font-black text-[10px] uppercase animate-pulse">
+                  ⚡ Agrupamento Mensal Ativo
+                </span>
+              ) : (
+                <div className="bg-amber-50 px-4 py-2 rounded-xl border border-amber-100 flex items-center gap-2">
+                  <span className="text-amber-500 text-xs">💡</span>
+                  <span className="text-[10px] font-black text-amber-700 uppercase">Dica: Ative o Agrupamento Mensal em "Refazer Formulário"</span>
+                </div>
+              )}
             </div>
           </div>
+
+          {config.agruparMensal && (
+            <div className="mb-8 p-6 bg-indigo-50 rounded-3xl border border-indigo-100">
+              <h4 className="text-indigo-900 font-black uppercase text-xs mb-3 tracking-widest">Estratégia de Agrupamento</h4>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-white p-4 rounded-2xl shadow-sm border border-indigo-100/50">
+                  <span className="block text-[10px] font-black text-indigo-400 uppercase mb-1">Dia Base</span>
+                  <span className="text-sm font-bold text-indigo-700">
+                    {config.diaBaseOrdem}ª {['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'][config.diaBaseSemana || 0]} do mês
+                  </span>
+                </div>
+                <div className="bg-white p-4 rounded-2xl shadow-sm border border-indigo-100/50">
+                  <span className="block text-[10px] font-black text-indigo-400 uppercase mb-1">Intervalo entre Vacinas</span>
+                  <span className="text-sm font-bold text-indigo-700">{config.intervaloEntreVacinas || 5} dias</span>
+                </div>
+                <div className="bg-white p-4 rounded-2xl shadow-sm border border-indigo-100/50">
+                  <span className="block text-[10px] font-black text-indigo-400 uppercase mb-1">Finais de Semana</span>
+                  <span className="text-sm font-bold text-indigo-700">Sempre evitados (Mover para Segunda)</span>
+                </div>
+              </div>
+              <p className="mt-4 text-[11px] text-indigo-600 font-medium italic">
+                * Todas as vacinações do mês serão concentradas a partir do Dia Base, respeitando o intervalo entre diferentes tipos de vacina.
+              </p>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             
