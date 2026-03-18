@@ -16,6 +16,7 @@ import WeightManager from './modulo/manejo/WeightManager.tsx';
 import ECCManager from './modulo/manejo/ECCManager.tsx';
 import FamachaManager from './modulo/manejo/FamachaManager.tsx';
 import ReproductionManager from './modulo/reproducao/ReproductionManager.tsx';
+import FotografiasAnaliticas from './modulo/analises/fotografias/FotografiasAnaliticas.tsx';
 import Login from './modulo/sistema/Login.tsx';
 import NoticeBoard from './modulo/operacional/NoticeBoard.tsx';
 
@@ -269,6 +270,7 @@ const App: React.FC = () => {
     switch (activeTab) {
       case 'dashboard': return <Dashboard sheep={safeSheep} breeds={breeds} groups={groups} paddocks={paddocks} plans={breedingPlans} onRefresh={loadInitialData} />;
       case 'charts': return <ChartsView sheep={safeSheep} breeds={breeds} groups={groups} />;
+      case 'fotografias': return <FotografiasAnaliticas sheep={safeSheep} groups={groups} plans={breedingPlans} />;
       case 'guia': return <KnowledgeAssistant />;
       case 'manejo': return <ManejoManager sheep={safeSheep} paddocks={paddocks} groups={groups} onRefreshSheep={loadInitialData} managerPassword={managerPassword} />;
       case 'vacinacao': return <VacinacaoManager sheep={safeSheep} groups={groups} plans={breedingPlans} paddocks={paddocks} />;

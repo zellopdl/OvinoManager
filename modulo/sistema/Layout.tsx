@@ -28,6 +28,7 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab, head
   const menuItems = [
     { id: 'noticeboard', label: 'Painel', icon: '📋', category: 'Principal' },
     { id: 'dashboard', label: 'Início', icon: '📊', category: 'Principal' },
+    { id: 'fotografias', label: 'Fotografias', icon: '📸', category: 'Principal' },
     { id: 'charts', label: 'Análises', icon: '📈', category: 'Principal' },
     { id: 'sheep', label: 'Rebanho', icon: '🐑', category: 'Principal' },
     { id: 'weight', label: 'Pesagem', icon: '⚖️', category: 'Operacional' },
@@ -48,7 +49,7 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab, head
     ? menuItems.filter(item => item.id === activeTab) 
     : menuItems.filter(item => item.id !== 'noticeboard');
 
-  const bottomTabs = filteredMenuItems.filter(item => ['dashboard', 'sheep', 'manejo', 'guia', 'weight', 'ecc', 'famacha', 'repro'].includes(item.id));
+  const bottomTabs = filteredMenuItems.filter(item => ['dashboard', 'sheep', 'manejo', 'guia', 'weight', 'ecc', 'famacha', 'repro', 'fotografias'].includes(item.id));
 
   const handleTabClick = (id: string) => {
     setActiveTab(id);

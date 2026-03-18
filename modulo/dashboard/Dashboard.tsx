@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { Sheep, Breed, Group, Status, BreedingPlan, Paddock, RadarAnalise } from '../../types';
+import { Sheep, Breed, Group, Status, BreedingPlan, Paddock, RadarAnalise, Sexo } from '../../types';
 import { getHerdDailyInsights } from './geminiService';
 import { entityService } from '../cadastros/entityService';
 import { radarService } from '../analises/radarService';
@@ -119,13 +119,51 @@ const Dashboard: React.FC<DashboardProps> = ({ sheep, breeds, groups, paddocks =
 
   const stats = useMemo(() => {
     const activeSheep = sheep.filter(s => s.status === Status.ATIVO);
+    const now = new Date();
+    
+    const getAgeDays = (nascimento: string) => {
+      if (!nascimento) return 9999;
+      const birth = new Date(nascimento);
+      if (isNaN(birth.getTime())) return 9999;
+      const diff = now.getTime() - birth.getTime();
+      return Math.floor(diff / (1000 * 60 * 60 * 24));
+    };
+
+    const recemNascidos = activeSheep.filter(s => getAgeDays(s.nascimento) < 90);
+    const recria = activeSheep.filter(s => {
+      const age = getAgeDays(s.nascimento);
+      return age >= 90 && age < 365;
+    });
+    const reprodutores = activeSheep.filter(s => s.sexo === Sexo.MACHO && getAgeDays(s.nascimento) >= 365);
+    const matrizes = activeSheep.filter(s => s.sexo === Sexo.FEMEA && getAgeDays(s.nascimento) >= 365);
+    const prenhas = matrizes.filter(s => s.prenha);
+    const vazias = matrizes.filter(s => !s.prenha);
+
+    const avg = (list: Sheep[]) => list.length > 0 ? list.reduce((acc, curr) => acc + curr.peso, 0) / list.length : 0;
+
     return {
       total: sheep.length,
       ativos: activeSheep.length,
-      machos: activeSheep.filter(s => s.sexo === 'macho').length,
-      femeas: activeSheep.filter(s => s.sexo === 'femea').length,
-      semSexo: activeSheep.filter(s => s.sexo !== 'macho' && s.sexo !== 'femea').length,
-      mediaPeso: activeSheep.length > 0 ? activeSheep.reduce((acc, curr) => acc + curr.peso, 0) / activeSheep.length : 0,
+      machos: activeSheep.filter(s => s.sexo === Sexo.MACHO).length,
+      femeas: activeSheep.filter(s => s.sexo === Sexo.FEMEA).length,
+      semSexo: activeSheep.filter(s => s.sexo !== Sexo.MACHO && s.sexo !== Sexo.FEMEA).length,
+      mediaPeso: avg(activeSheep),
+      
+      // Novas visões (Fotografia)
+      mediaRecemNascidos: avg(recemNascidos),
+      countRecemNascidos: recemNascidos.length,
+      
+      mediaRecria: avg(recria),
+      countRecria: recria.length,
+      
+      mediaReprodutores: avg(reprodutores),
+      countReprodutores: reprodutores.length,
+      
+      mediaPrenhas: avg(prenhas),
+      countPrenhas: prenhas.length,
+      
+      mediaVazias: avg(vazias),
+      countVazias: vazias.length
     };
   }, [sheep]);
 
@@ -335,6 +373,32 @@ const Dashboard: React.FC<DashboardProps> = ({ sheep, breeds, groups, paddocks =
           </div>
         </section>
       )}
+
+      {/* FOTOGRAFIA DO REBANHO - PESO MÉDIO */}
+      <section className="space-y-4">
+        <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] px-2">Fotografia do Rebanho: Peso Médio por Categoria</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+          {[
+            { label: 'Recém-nascidos', sub: 'Até 90 dias', value: stats.mediaRecemNascidos, count: stats.countRecemNascidos, icon: '🍼', color: 'text-blue-600', bg: 'bg-blue-50' },
+            { label: 'Recria', sub: '90 a 365 dias', value: stats.mediaRecria, count: stats.countRecria, icon: '🌱', color: 'text-emerald-600', bg: 'bg-emerald-50' },
+            { label: 'Reprodutores', sub: 'Machos Adultos', value: stats.mediaReprodutores, count: stats.countReprodutores, icon: '🐏', color: 'text-indigo-600', bg: 'bg-indigo-50' },
+            { label: 'Prenhas', sub: 'Matrizes Confirmadas', value: stats.mediaPrenhas, count: stats.countPrenhas, icon: '🤰', color: 'text-rose-600', bg: 'bg-rose-50' },
+            { label: 'Vazias', sub: 'Matrizes Aptas', value: stats.mediaVazias, count: stats.countVazias, icon: '⭕', color: 'text-amber-600', bg: 'bg-amber-50' },
+          ].map((item) => (
+            <div key={item.label} className={`p-6 rounded-[32px] border-2 border-white shadow-xl ${item.bg} flex flex-col justify-between min-h-[160px] transition-transform hover:scale-[1.02]`}>
+              <div className="flex justify-between items-start">
+                <span className="text-2xl">{item.icon}</span>
+                <span className="bg-white/50 px-2 py-1 rounded-lg text-[9px] font-black text-slate-500 uppercase">{item.count} Animais</span>
+              </div>
+              <div>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">{item.label}</p>
+                <p className="text-[8px] font-bold text-slate-400 uppercase italic mb-1">{item.sub}</p>
+                <h4 className={`text-2xl font-black ${item.color}`}>{item.value.toFixed(1)}<span className="text-sm ml-1">kg</span></h4>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
 
       {/* RADAR IA */}
       <section className="bg-white p-6 rounded-[40px] border border-slate-200 shadow-sm">
