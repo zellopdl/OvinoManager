@@ -24,6 +24,7 @@ const ManejoManager: React.FC<ManejoManagerProps> = ({ sheep, paddocks, groups, 
   const [editingTask, setEditingTask] = useState<Manejo | null>(null);
   const [isAvisoModalOpen, setIsAvisoModalOpen] = useState(false);
   const [newAviso, setNewAviso] = useState({ titulo: '', conteudo: '', prioridade: 'normal' as any });
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   const [authModal, setAuthModal] = useState<{ type: 'edit' | 'delete' | 'revert', task: Manejo } | null>(null);
   const [passInput, setPassInput] = useState('');
@@ -103,14 +104,14 @@ const ManejoManager: React.FC<ManejoManagerProps> = ({ sheep, paddocks, groups, 
 
   const toggleSection = (section: 'urgent' | 'today' | 'done') => setOpenSections(prev => ({ ...prev, [section]: !prev[section] }));
 
-  const handleVerifyAuth = () => {
+  const handleVerifyAuth = async () => {
     const masterPass = managerPassword || localStorage.getItem('ovi_manager_pwd') || '1234';
     if (passInput === masterPass) {
       const { type, task } = authModal!;
       if (type === 'delete') {
-        processDelete(task.id);
+        await processDelete(task.id);
       } else if (type === 'revert') {
-        processRevert(task.id);
+        await processRevert(task.id);
       } else {
         setEditingTask(task);
         setFormManejo({
@@ -140,11 +141,29 @@ const ManejoManager: React.FC<ManejoManagerProps> = ({ sheep, paddocks, groups, 
   };
 
   const processDelete = async (id: string) => {
-    try { await manejoService.delete(id); await loadData(); } catch (e) { alert("Erro ao excluir."); }
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    try { 
+      await manejoService.delete(id); 
+      await loadData(); 
+    } catch (e) { 
+      alert("Erro ao excluir."); 
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const processRevert = async (id: string) => {
-    try { await manejoService.revertTask(id); await loadData(); } catch (e) { alert("Erro ao desfazer."); }
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    try { 
+      await manejoService.revertTask(id); 
+      await loadData(); 
+    } catch (e) { 
+      alert("Erro ao desfazer."); 
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const toggleDay = (day: number) => {
@@ -159,6 +178,8 @@ const ManejoManager: React.FC<ManejoManagerProps> = ({ sheep, paddocks, groups, 
 
   const handleSaveManejo = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
+    setIsSubmitting(true);
     try {
       const payload: Partial<Manejo> = {
         titulo: formManejo.titulo,
@@ -180,17 +201,27 @@ const ManejoManager: React.FC<ManejoManagerProps> = ({ sheep, paddocks, groups, 
       setIsFormOpen(false);
       setEditingTask(null);
       await loadData();
-    } catch (e) { alert("Erro ao processar."); }
+    } catch (e) { 
+      alert("Erro ao processar."); 
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleSaveAviso = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
+    setIsSubmitting(true);
     try {
       await avisoService.create({ ...newAviso, autor: 'Gerente' });
       setIsAvisoModalOpen(false);
       setNewAviso({ titulo: '', conteudo: '', prioridade: 'normal' });
       await loadData();
-    } catch (e) { alert("Erro ao salvar aviso."); }
+    } catch (e) { 
+      alert("Erro ao salvar aviso."); 
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleDeleteAviso = async (id: string) => {
@@ -201,7 +232,8 @@ const ManejoManager: React.FC<ManejoManagerProps> = ({ sheep, paddocks, groups, 
   };
 
   const handleComplete = async () => {
-    if (!completingTask || !executor.trim()) return;
+    if (!completingTask || !executor.trim() || isSubmitting) return;
+    setIsSubmitting(true);
     try {
       await manejoService.completeTask(completingTask, executor, notes);
       setCompletingTask(null);
@@ -209,7 +241,11 @@ const ManejoManager: React.FC<ManejoManagerProps> = ({ sheep, paddocks, groups, 
       setNotes('');
       await loadData();
       onRefreshSheep();
-    } catch (e) { alert("Erro ao concluir."); }
+    } catch (e) { 
+      alert("Erro ao concluir."); 
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const renderTaskCard = (task: Manejo, mode: 'urgent' | 'pending' | 'done') => {
@@ -336,7 +372,9 @@ const ManejoManager: React.FC<ManejoManagerProps> = ({ sheep, paddocks, groups, 
 
               <div className="grid grid-cols-2 gap-4 mt-10 shrink-0">
                  <button onClick={() => { setCompletingTask(null); setExecutor(''); setNotes(''); }} className="py-4 text-slate-400 font-black uppercase text-[10px] hover:text-slate-600">Descartar</button>
-                 <button onClick={handleComplete} disabled={!executor.trim()} className="py-4 bg-emerald-600 text-white rounded-2xl font-black uppercase text-[11px] shadow-xl shadow-emerald-100 active:scale-95 disabled:opacity-30 transition-all">Confirmar Realização</button>
+                 <button onClick={handleComplete} disabled={!executor.trim() || isSubmitting} className="py-4 bg-emerald-600 text-white rounded-2xl font-black uppercase text-[11px] shadow-xl shadow-emerald-100 active:scale-95 disabled:opacity-30 transition-all">
+                   {isSubmitting ? 'Processando...' : 'Confirmar Realização'}
+                 </button>
               </div>
            </div>
         </div>
@@ -492,7 +530,9 @@ const ManejoManager: React.FC<ManejoManagerProps> = ({ sheep, paddocks, groups, 
 
                 <div className="flex gap-3">
                    <button type="button" onClick={() => { setIsFormOpen(false); setEditingTask(null); }} className="flex-1 py-4 text-slate-400 font-black uppercase text-[11px] hover:text-slate-600">Cancelar</button>
-                   <button type="submit" className="flex-1 py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase text-[11px] shadow-xl shadow-indigo-100 active:scale-95 transition-all">Confirmar Agenda</button>
+                   <button type="submit" disabled={isSubmitting} className="flex-1 py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase text-[11px] shadow-xl shadow-indigo-100 active:scale-95 disabled:opacity-30 transition-all">
+                     {isSubmitting ? 'Salvando...' : 'Confirmar Agenda'}
+                   </button>
                 </div>
              </form>
           </div>

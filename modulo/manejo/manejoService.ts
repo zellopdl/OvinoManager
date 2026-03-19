@@ -86,6 +86,28 @@ export const manejoService = {
 
   async create(manejo: Partial<Manejo>, ovelhasIds: string[]) {
     if (isSupabaseConfigured) {
+      // Verificar se já existe uma tarefa PENDENTE idêntica para evitar duplicatas
+      let query = supabase
+        .from('manejos')
+        .select('id')
+        .eq('titulo', manejo.titulo)
+        .eq('data_planejada', manejo.dataPlanejada)
+        .eq('hora_planejada', manejo.horaPlanejada || '08:00')
+        .eq('status', StatusManejo.PENDENTE);
+      
+      if (manejo.grupoId) {
+        query = query.eq('grupo_id', manejo.grupoId);
+      } else {
+        query = query.is('grupo_id', null);
+      }
+
+      const { data: existing } = await query.maybeSingle();
+
+      if (existing) {
+        console.warn("Tarefa duplicada detectada, ignorando criação.");
+        return existing;
+      }
+
       const { data: mData, error: mError } = await supabase
         .from('manejos')
         .insert([{
@@ -172,6 +194,18 @@ export const manejoService = {
     const timestamp = new Date().toISOString();
     
     if (isSupabaseConfigured) {
+      // Verificar se a tarefa já foi concluída para evitar duplicatas na recorrência
+      const { data: currentTask } = await supabase
+        .from('manejos')
+        .select('status')
+        .eq('id', id)
+        .single();
+      
+      if (currentTask?.status === StatusManejo.CONCLUIDO) {
+        console.warn("Tarefa já concluída, ignorando nova conclusão.");
+        return;
+      }
+
       const { error } = await supabase
         .from('manejos')
         .update({
