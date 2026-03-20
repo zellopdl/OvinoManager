@@ -103,9 +103,16 @@ const EntityManager: React.FC<EntityManagerProps> = ({ title, tableName, icon, i
             <tbody className="divide-y">
               {initialData?.map(item => (
                 <tr key={item.id} className="hover:bg-slate-50 group">
-                  <td className="px-4 py-5 sm:p-5 font-black text-slate-700 uppercase tracking-tight">{item.nome}</td>
+                  <td className="px-4 py-5 sm:p-5 font-black text-slate-700 uppercase tracking-tight">
+                    {item.nome}
+                    {item.system_group && (
+                      <span className="ml-2 px-2 py-0.5 bg-slate-100 text-slate-400 text-[8px] rounded-full">SISTEMA</span>
+                    )}
+                  </td>
                   <td className="px-4 py-5 sm:p-5 text-right">
-                    <button onClick={() => handleDelete(item.id, item.nome)} className="w-10 h-10 flex items-center justify-center bg-rose-50 text-rose-400 rounded-xl md:opacity-0 group-hover:opacity-100 transition-all ml-auto">🗑️</button>
+                    {!item.system_group && (
+                      <button onClick={() => handleDelete(item.id, item.nome)} className="w-10 h-10 flex items-center justify-center bg-rose-50 text-rose-400 rounded-xl md:opacity-0 group-hover:opacity-100 transition-all ml-auto">🗑️</button>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -120,8 +127,15 @@ const EntityManager: React.FC<EntityManagerProps> = ({ title, tableName, icon, i
         <div className="md:hidden divide-y">
           {initialData?.map(item => (
             <div key={item.id} className="p-5 flex justify-between items-center active:bg-slate-50 transition-colors">
-              <p className="font-black text-slate-700 uppercase tracking-tight text-sm">{item.nome}</p>
-              <button onClick={() => handleDelete(item.id, item.nome)} className="w-10 h-10 flex items-center justify-center bg-rose-50 text-rose-400 rounded-xl">🗑️</button>
+              <div className="flex items-center gap-2">
+                <p className="font-black text-slate-700 uppercase tracking-tight text-sm">{item.nome}</p>
+                {item.system_group && (
+                  <span className="px-2 py-0.5 bg-slate-100 text-slate-400 text-[8px] rounded-full">SISTEMA</span>
+                )}
+              </div>
+              {!item.system_group && (
+                <button onClick={() => handleDelete(item.id, item.nome)} className="w-10 h-10 flex items-center justify-center bg-rose-50 text-rose-400 rounded-xl">🗑️</button>
+              )}
             </div>
           ))}
           {initialData?.length === 0 && (

@@ -28,6 +28,7 @@ const mapFromDB = (data: any): VacinacaoConfig => ({
   diaBaseSemana: data.dia_base_semana || 3,
   diaBaseOrdem: data.dia_base_ordem || 2,
   intervaloEntreVacinas: data.intervalo_entre_vacinas || 5,
+  updatedAt: data.updated_at,
 });
 
 // Helper to convert camelCase to DB snake_case
@@ -59,16 +60,28 @@ const mapToDB = (config: VacinacaoConfig): any => ({
 });
 
 export const vacinacaoService = {
-  async getConfirmedVaccinations(): Promise<string[]> {
+  async getConfirmedVaccinations(sheepId?: string): Promise<string[]> {
     if (!isSupabaseConfigured) {
       const local = localStorage.getItem('ovi_vacinacao_history');
-      return local ? JSON.parse(local) : [];
+      const history = local ? JSON.parse(local) : [];
+      if (sheepId) {
+        return history
+          .filter((h: string) => h.includes(`_sid:${sheepId}`))
+          .map((h: string) => h.replace(`_sid:${sheepId}`, ''));
+      }
+      return history;
     }
 
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('vacinacao_history')
         .select('date, vaccine, type');
+      
+      if (sheepId) {
+        query = query.like('type', `%_sid:${sheepId}`);
+      }
+
+      const { data, error } = await query;
       
       if (error) throw error;
       return data ? data.map((d: any) => `${d.date}_${d.vaccine}_${d.type}`) : [];
@@ -78,19 +91,21 @@ export const vacinacaoService = {
     }
   },
 
-  async confirmVaccination(date: string, vaccine: string, type: string): Promise<void> {
+  async confirmVaccination(date: string, vaccine: string, type: string, sheepId?: string): Promise<void> {
     if (!isSupabaseConfigured) {
       const local = localStorage.getItem('ovi_vacinacao_history');
       const history = local ? JSON.parse(local) : [];
-      history.push(`${date}_${vaccine}_${type}`);
+      const entry = sheepId ? `${date}_${vaccine}_${type}_sid:${sheepId}` : `${date}_${vaccine}_${type}`;
+      history.push(entry);
       localStorage.setItem('ovi_vacinacao_history', JSON.stringify(history));
       return;
     }
 
     try {
+      const finalType = sheepId ? `${type}_sid:${sheepId}` : type;
       const { error } = await supabase
         .from('vacinacao_history')
-        .insert([{ date, vaccine, type }]);
+        .insert([{ date, vaccine, type: finalType }]);
       
       if (error) throw error;
     } catch (err) {

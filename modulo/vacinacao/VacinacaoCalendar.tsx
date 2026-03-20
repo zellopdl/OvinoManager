@@ -22,6 +22,7 @@ const VacinacaoCalendar: React.FC<Props> = ({ sheep, groups, plans, paddocks, co
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [confirmedVaccinations, setConfirmedVaccinations] = useState<string[]>([]);
+  const [selectedAnimalIds, setSelectedAnimalIds] = useState<Record<string, string[]>>({}); // key: vaccine_type, value: sheepIds
   const [isConfirming, setIsConfirming] = useState(false);
 
   useEffect(() => {
@@ -32,23 +33,38 @@ const VacinacaoCalendar: React.FC<Props> = ({ sheep, groups, plans, paddocks, co
     loadConfirmed();
   }, []);
 
-  const handleConfirm = async (date: string, vaccine: string, type: string) => {
+  const handleConfirm = async (date: string, vaccine: string, type: string, animalIds: string[]) => {
     try {
       setIsConfirming(true);
-      await vacinacaoService.confirmVaccination(date, vaccine, type);
-      setConfirmedVaccinations(prev => [...prev, `${date}_${vaccine}_${type}`]);
+      for (const id of animalIds) {
+        await vacinacaoService.confirmVaccination(date, vaccine, type, id);
+      }
+      const updated = await vacinacaoService.getConfirmedVaccinations();
+      setConfirmedVaccinations(updated);
     } catch (err) {
       console.error("Erro ao confirmar vacinação:", err);
     } finally {
+      setIsProcessing(false);
       setIsConfirming(false);
     }
   };
 
+  const [isProcessing, setIsProcessing] = useState(false);
+
   const events = useMemo(() => {
     try {
       const evts: Record<string, VacinacaoEvent[]> = {};
+      const configYear = config.updatedAt ? new Date(config.updatedAt).getFullYear() : new Date().getFullYear();
 
       const addEvt = (dateStr: string, type: VacinacaoEvent['type'], title: string, vaccine: string, animal: Sheep) => {
+        // 1. Verificar se o animal já foi vacinado para esta data/vacina/tipo
+        const isConfirmed = confirmedVaccinations.includes(`${dateStr}_${vaccine}_${type}_sid:${animal.id}`);
+        if (isConfirmed) return;
+
+        // 2. Verificar se o ano do evento é anterior ao ano da configuração (se for uma nova configuração)
+        const evtYear = new Date(dateStr + 'T12:00:00Z').getFullYear();
+        if (evtYear < configYear) return;
+
         if (!evts[dateStr]) evts[dateStr] = [];
         let existing = evts[dateStr].find(e => e.vaccine === vaccine && e.type === type);
         if (!existing) {
@@ -106,6 +122,7 @@ const VacinacaoCalendar: React.FC<Props> = ({ sheep, groups, plans, paddocks, co
       const naturalEvents: { date: string, type: VacinacaoEvent['type'], title: string, vaccine: string, animal: Sheep }[] = [];
 
       sheep.forEach(s => {
+        // 1. Cordeiros
         if (s.nascimento) {
           naturalEvents.push({ date: addDays(s.nascimento, 40), type: 'cordeiro', title: 'Vacinação Cordeiros', vaccine: `Clostridiose (${config.tipoClostridiose} cepas)`, animal: s });
           naturalEvents.push({ date: addDays(s.nascimento, 70), type: 'cordeiro', title: 'Reforço Cordeiros', vaccine: `Clostridiose (${config.tipoClostridiose} cepas)`, animal: s });
@@ -113,16 +130,47 @@ const VacinacaoCalendar: React.FC<Props> = ({ sheep, groups, plans, paddocks, co
             naturalEvents.push({ date: addDays(s.nascimento, 15), type: 'cordeiro', title: 'Vacina Ectima', vaccine: 'Ectima', animal: s });
           }
         }
-      });
 
-      const quarentenaGroup = groups.find(g => g.nome.toLowerCase().includes('quarentena'));
-      if (quarentenaGroup) {
-        sheep.filter(s => s.grupoId === quarentenaGroup.id).forEach(s => {
+        // 2. Quarentena (Baseado no nome do grupo do animal)
+        const group = groups.find(g => g.id === s.grupoId);
+        if (group && group.nome.toLowerCase().includes('quarentena')) {
           const d0 = s.createdAt ? s.createdAt.split('T')[0] : new Date().toISOString().split('T')[0];
           naturalEvents.push({ date: d0, type: 'quarentena', title: 'Protocolo Entrada', vaccine: 'Vermífugo + Clostridiose', animal: s });
           naturalEvents.push({ date: addDays(d0, 30), type: 'quarentena', title: 'Reforço Entrada', vaccine: 'Reforço Clostridiose', animal: s });
+        }
+
+        // 3. Vacinação Anual (Para todos os adultos)
+        const mesAnual = (config.mesAnual || 5) - 1;
+        const anoAtual = new Date().getFullYear();
+        
+        [anoAtual, anoAtual + 1].forEach(year => {
+          let dateAnual = getBaseDayOfMonth(year, mesAnual, config.diaBaseOrdem || 2, config.diaBaseSemana || 3);
+          dateAnual = adjustToWorkDay(dateAnual);
+          const dateStr = dateAnual.toISOString().split('T')[0];
+
+          const birthDate = s.nascimento ? new Date(s.nascimento) : null;
+          if (!birthDate || birthDate < dateAnual) {
+            naturalEvents.push({ 
+              date: dateStr, 
+              type: 'anual', 
+              title: 'Vacinação Anual', 
+              vaccine: `Clostridiose (${config.tipoClostridiose} cepas)`, 
+              animal: s 
+            });
+
+            if (config.hasRaiva) {
+              const dateRaiva = config.agruparMensal ? dateAnual : addWorkDays(dateAnual, 15);
+              naturalEvents.push({ 
+                date: dateRaiva.toISOString().split('T')[0], 
+                type: 'anual', 
+                title: 'Vacinação Anual', 
+                vaccine: 'Raiva', 
+                animal: s 
+              });
+            }
+          }
         });
-      }
+      });
 
       plans.forEach(p => {
         if (p.dataInicioMonta) {
@@ -253,9 +301,12 @@ const VacinacaoCalendar: React.FC<Props> = ({ sheep, groups, plans, paddocks, co
             const isToday = dateStr === new Date().toISOString().split('T')[0];
             const isSelected = selectedDate === dateStr;
 
-            const confirmedCount = dayEvents.filter(evt => 
-              confirmedVaccinations.includes(`${dateStr}_${evt.vaccine}_${evt.type}`)
-            ).length;
+            const confirmedCount = dayEvents.reduce((acc, evt) => {
+              const animalsConfirmed = evt.animals.filter(a => 
+                confirmedVaccinations.includes(`${dateStr}_${evt.vaccine}_${evt.type}_sid:${a.id}`)
+              ).length;
+              return acc + (animalsConfirmed > 0 ? 1 : 0);
+            }, 0);
             
             const isFullyConfirmed = dayEvents.length > 0 && confirmedCount === dayEvents.length;
             const isPartiallyConfirmed = dayEvents.length > 0 && confirmedCount > 0 && confirmedCount < dayEvents.length;
@@ -285,7 +336,9 @@ const VacinacaoCalendar: React.FC<Props> = ({ sheep, groups, plans, paddocks, co
                 {/* Event Indicators */}
                 <div className="flex flex-wrap justify-center gap-0.5 mt-auto w-full pb-0.5">
                   {dayEvents.map((evt, idx) => {
-                    const isConfirmed = confirmedVaccinations.includes(`${dateStr}_${evt.vaccine}_${evt.type}`);
+                    const isConfirmed = evt.animals.every(a => 
+                      confirmedVaccinations.includes(`${dateStr}_${evt.vaccine}_${evt.type}_sid:${a.id}`)
+                    );
                     return (
                       <div 
                         key={idx} 
@@ -399,12 +452,42 @@ const VacinacaoCalendar: React.FC<Props> = ({ sheep, groups, plans, paddocks, co
                                 </span>
                               </div>
                               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                {animalsInLot.map(a => (
-                                  <div key={a.id} className="flex items-center gap-2 px-2 py-1.5 bg-white rounded-lg border border-slate-100 text-[10px] font-bold text-slate-600">
-                                    <span className="w-8 text-indigo-500">#{a.brinco}</span>
-                                    <span className="truncate">{a.nome}</span>
-                                  </div>
-                                ))}
+                                {animalsInLot.map(a => {
+                                  const isConfirmed = confirmedVaccinations.includes(`${selectedDate}_${evt.vaccine}_${evt.type}_sid:${a.id}`);
+                                  const isSelected = (selectedAnimalIds[`${evt.vaccine}_${evt.type}`] || []).includes(a.id);
+                                  
+                                  return (
+                                    <button 
+                                      key={a.id} 
+                                      onClick={() => {
+                                        if (isConfirmed) return;
+                                        const current = selectedAnimalIds[`${evt.vaccine}_${evt.type}`] || [];
+                                        if (current.includes(a.id)) {
+                                          setSelectedAnimalIds({ ...selectedAnimalIds, [`${evt.vaccine}_${evt.type}`]: current.filter(id => id !== a.id) });
+                                        } else {
+                                          setSelectedAnimalIds({ ...selectedAnimalIds, [`${evt.vaccine}_${evt.type}`]: [...current, a.id] });
+                                        }
+                                      }}
+                                      className={`flex items-center justify-between px-2 py-1.5 rounded-lg border transition-all text-[10px] font-bold
+                                        ${isConfirmed ? 'bg-emerald-50 border-emerald-100 text-emerald-600 cursor-default' : 
+                                          isSelected ? 'bg-indigo-50 border-indigo-200 text-indigo-700 shadow-sm' : 
+                                          'bg-white border-slate-100 text-slate-600 hover:border-slate-300'}
+                                      `}
+                                    >
+                                      <div className="flex items-center gap-2">
+                                        <span className={isConfirmed ? 'text-emerald-500' : 'text-indigo-500'}>#{a.brinco}</span>
+                                        <span className="truncate">{a.nome}</span>
+                                      </div>
+                                      {isConfirmed ? (
+                                        <span className="text-emerald-500">✓</span>
+                                      ) : (
+                                        <div className={`w-3 h-3 rounded-sm border ${isSelected ? 'bg-indigo-500 border-indigo-600' : 'border-slate-300'}`}>
+                                          {isSelected && <div className="w-full h-full flex items-center justify-center text-[8px] text-white">✓</div>}
+                                        </div>
+                                      )}
+                                    </button>
+                                  );
+                                })}
                               </div>
                             </div>
                           );
@@ -414,23 +497,38 @@ const VacinacaoCalendar: React.FC<Props> = ({ sheep, groups, plans, paddocks, co
 
                     {/* Botão de Confirmação */}
                     <div className="mt-8">
-                      {confirmedVaccinations.includes(`${selectedDate}_${evt.vaccine}_${evt.type}`) ? (
+                      {evt.animals.every(a => confirmedVaccinations.includes(`${selectedDate}_${evt.vaccine}_${evt.type}_sid:${a.id}`)) ? (
                         <div className="w-full py-4 bg-emerald-100 text-emerald-700 rounded-2xl font-black text-center uppercase tracking-widest flex items-center justify-center gap-2 border-2 border-emerald-200">
-                          <span className="text-2xl">✅</span> VACINAÇÃO CONCLUÍDA
+                          <span className="text-2xl">✅</span> TODOS VACINADOS
                         </div>
                       ) : (
-                        <button
-                          onClick={() => handleConfirm(selectedDate!, evt.vaccine, evt.type)}
-                          disabled={isConfirming}
-                          className="w-full py-5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 text-white rounded-2xl font-black uppercase tracking-widest transition-all shadow-xl shadow-indigo-200 active:scale-95 flex items-center justify-center gap-3 border-b-4 border-indigo-800"
-                        >
-                          {isConfirming ? (
-                            <div className="w-6 h-6 border-3 border-white/30 border-t-white rounded-full animate-spin" />
-                          ) : (
-                            <span className="text-2xl">💉</span>
-                          )}
-                          <span className="text-lg">CONFIRMAR ADMINISTRAÇÃO</span>
-                        </button>
+                        <div className="space-y-3">
+                          <button
+                            onClick={() => {
+                              const allIds = evt.animals.filter(a => !confirmedVaccinations.includes(`${selectedDate}_${evt.vaccine}_${evt.type}_sid:${a.id}`)).map(a => a.id);
+                              setSelectedAnimalIds({ ...selectedAnimalIds, [`${evt.vaccine}_${evt.type}`]: allIds });
+                            }}
+                            className="w-full py-2 text-[10px] font-black uppercase text-slate-400 hover:text-indigo-600 transition-colors"
+                          >
+                            Selecionar todos os pendentes
+                          </button>
+                          <button
+                            onClick={() => handleConfirm(selectedDate!, evt.vaccine, evt.type, selectedAnimalIds[`${evt.vaccine}_${evt.type}`] || [])}
+                            disabled={isConfirming || !(selectedAnimalIds[`${evt.vaccine}_${evt.type}`]?.length > 0)}
+                            className="w-full py-5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 text-white rounded-2xl font-black uppercase tracking-widest transition-all shadow-xl shadow-indigo-200 active:scale-95 flex items-center justify-center gap-3 border-b-4 border-indigo-800"
+                          >
+                            {isConfirming ? (
+                              <div className="w-6 h-6 border-3 border-white/30 border-t-white rounded-full animate-spin" />
+                            ) : (
+                              <span className="text-2xl">💉</span>
+                            )}
+                            <span className="text-lg">
+                              {selectedAnimalIds[`${evt.vaccine}_${evt.type}`]?.length > 0 
+                                ? `CONFIRMAR ${selectedAnimalIds[`${evt.vaccine}_${evt.type}`].length} ANIMAIS`
+                                : 'SELECIONE OS ANIMAIS'}
+                            </span>
+                          </button>
+                        </div>
                       )}
                     </div>
                   </div>

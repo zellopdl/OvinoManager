@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import VacinacaoForm from './VacinacaoForm';
 import VacinacaoBoard from './VacinacaoBoard';
 import VacinacaoCalendar from './VacinacaoCalendar';
+import VacinacaoGroupView from './VacinacaoGroupView';
 import { vacinacaoService } from './vacinacaoService';
 import { Sheep, Group, BreedingPlan, Paddock } from '../../types';
 
@@ -38,6 +39,7 @@ export interface VacinacaoConfig {
   diaBaseSemana: number; // 0-6
   diaBaseOrdem: number; // 1-4
   intervaloEntreVacinas: number;
+  updatedAt?: string;
 }
 
 interface Props {
@@ -54,7 +56,7 @@ const VacinacaoManager: React.FC<Props> = ({ sheep, groups, plans, paddocks }) =
   const [error, setError] = useState<string | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
   const [showConfirmReset, setShowConfirmReset] = useState(false);
-  const [viewMode, setViewMode] = useState<'board' | 'calendar'>('board');
+  const [viewMode, setViewMode] = useState<'board' | 'calendar' | 'group'>('board');
 
   useEffect(() => {
     const loadConfig = async () => {
@@ -132,6 +134,12 @@ const VacinacaoManager: React.FC<Props> = ({ sheep, groups, plans, paddocks }) =
               >
                 Calendário
               </button>
+              <button
+                onClick={() => setViewMode('group')}
+                className={`flex-1 sm:flex-none px-6 py-2.5 rounded-xl font-black uppercase text-[10px] sm:text-[11px] transition-all whitespace-nowrap ${viewMode === 'group' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                Por Grupo
+              </button>
             </div>
             <button 
               onClick={() => setShowConfirmReset(true)} 
@@ -194,8 +202,10 @@ const VacinacaoManager: React.FC<Props> = ({ sheep, groups, plans, paddocks }) =
         </div>
       ) : viewMode === 'board' ? (
         <VacinacaoBoard config={config} sheep={sheep} groups={groups} />
-      ) : (
+      ) : viewMode === 'calendar' ? (
         <VacinacaoCalendar sheep={sheep} groups={groups} plans={plans} paddocks={paddocks} config={config} />
+      ) : (
+        <VacinacaoGroupView sheep={sheep} groups={groups} plans={plans} paddocks={paddocks} config={config} />
       )}
     </div>
   );
